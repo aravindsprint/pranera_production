@@ -1,0 +1,502 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "naming_series:",
+ "creation": "2026-10-14 21:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "roll",
+  "inspection_type",
+  "job_card",
+  "work_order",
+  "col_a",
+  "item_code",
+  "batch_no",
+  "project",
+  "inspected_on",
+  "checker",
+  "checker_name",
+  "measure_section",
+  "stock_uom",
+  "roll_weight",
+  "width",
+  "gsm",
+  "col_b",
+  "length_mtr",
+  "total_mtr",
+  "wpi_actual",
+  "cpi_actual",
+  "col_c",
+  "total_qty",
+  "rejected_qty",
+  "accepted_qty",
+  "result_section",
+  "total_points",
+  "point_percentage",
+  "col_d",
+  "direct",
+  "grade",
+  "grade_override",
+  "mistakes_section",
+  "mistakes",
+  "checks_section",
+  "machine_no",
+  "dyeing_machine",
+  "dyeing_chamber_no",
+  "knitting_machine_no",
+  "sample",
+  "scrap",
+  "col_e",
+  "approved_sample_checked",
+  "gold_seal_sample_checked",
+  "shade_checked",
+  "wicking",
+  "col_f",
+  "crow_feet",
+  "patta_problem",
+  "vertical_line",
+  "rope_mark",
+  "knurling",
+  "mild_snagging",
+  "remarks_section",
+  "remarks"
+ ],
+ "fields": [
+  {
+   "default": "RINS-.YY.-.#####",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Series",
+   "options": "RINS-.YY.-.#####",
+   "reqd": 1
+  },
+  {
+   "fieldname": "roll",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Roll No",
+   "options": "Roll",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "default": "Fabric",
+   "fieldname": "inspection_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Inspection Type",
+   "options": "Fabric\nCollar Cuff"
+  },
+  {
+   "fieldname": "job_card",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Job Card",
+   "options": "Job Card",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "work_order",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Work Order",
+   "options": "Work Order",
+   "search_index": 1
+  },
+  {
+   "fieldname": "col_a",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item Code",
+   "options": "Item"
+  },
+  {
+   "fieldname": "batch_no",
+   "fieldtype": "Link",
+   "label": "Batch (at inspection)",
+   "options": "Batch"
+  },
+  {
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "label": "Project",
+   "options": "Project"
+  },
+  {
+   "default": "now",
+   "fieldname": "inspected_on",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Inspected On"
+  },
+  {
+   "default": "__user",
+   "fieldname": "checker",
+   "fieldtype": "Link",
+   "label": "Checker",
+   "options": "User"
+  },
+  {
+   "fetch_from": "checker.full_name",
+   "fieldname": "checker_name",
+   "fieldtype": "Data",
+   "label": "Checker Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "measure_section",
+   "fieldtype": "Section Break",
+   "label": "Measurements"
+  },
+  {
+   "fieldname": "stock_uom",
+   "fieldtype": "Data",
+   "label": "Stock UOM",
+   "read_only": 1
+  },
+  {
+   "fieldname": "roll_weight",
+   "fieldtype": "Float",
+   "label": "Roll Weight (Kgs)",
+   "precision": "3"
+  },
+  {
+   "fieldname": "width",
+   "fieldtype": "Float",
+   "label": "Actual Width (inch)"
+  },
+  {
+   "fieldname": "gsm",
+   "fieldtype": "Int",
+   "label": "GSM"
+  },
+  {
+   "fieldname": "col_b",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "length_mtr",
+   "fieldtype": "Float",
+   "label": "Length (Mtr)",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_mtr",
+   "fieldtype": "Float",
+   "label": "Total Area (Sq Mtr)",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "fieldname": "wpi_actual",
+   "fieldtype": "Float",
+   "label": "WPI Actual"
+  },
+  {
+   "fieldname": "cpi_actual",
+   "fieldtype": "Float",
+   "label": "CPI Actual"
+  },
+  {
+   "fieldname": "col_c",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.inspection_type=='Collar Cuff'",
+   "fieldname": "total_qty",
+   "fieldtype": "Int",
+   "label": "Total Qty (Pcs)"
+  },
+  {
+   "depends_on": "eval:doc.inspection_type=='Collar Cuff'",
+   "fieldname": "rejected_qty",
+   "fieldtype": "Int",
+   "label": "Rejected Qty (Pcs)",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.inspection_type=='Collar Cuff'",
+   "fieldname": "accepted_qty",
+   "fieldtype": "Int",
+   "label": "Accepted Qty (Pcs)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "result_section",
+   "fieldtype": "Section Break",
+   "label": "Result"
+  },
+  {
+   "fieldname": "total_points",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Total Points",
+   "read_only": 1
+  },
+  {
+   "fieldname": "point_percentage",
+   "fieldtype": "Float",
+   "label": "Points %",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "fieldname": "col_d",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "direct",
+   "fieldtype": "Check",
+   "label": "Direct (Accepted As Is)"
+  },
+  {
+   "fieldname": "grade",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Grade",
+   "options": "1\n2\n3\nDirect",
+   "read_only": 1
+  },
+  {
+   "description": "Leave empty to use the calculated grade",
+   "fieldname": "grade_override",
+   "fieldtype": "Select",
+   "label": "Grade Override",
+   "options": "\n1\n2\n3\nDirect"
+  },
+  {
+   "fieldname": "mistakes_section",
+   "fieldtype": "Section Break",
+   "label": "Mistakes (4-Point System)"
+  },
+  {
+   "fieldname": "mistakes",
+   "fieldtype": "Table",
+   "label": "Mistakes",
+   "options": "Roll Inspection Mistake"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "checks_section",
+   "fieldtype": "Section Break",
+   "label": "Roll Checks"
+  },
+  {
+   "fieldname": "machine_no",
+   "fieldtype": "Data",
+   "label": "Inspection Machine No"
+  },
+  {
+   "fieldname": "dyeing_machine",
+   "fieldtype": "Data",
+   "label": "Dyeing Machine"
+  },
+  {
+   "fieldname": "dyeing_chamber_no",
+   "fieldtype": "Data",
+   "label": "Dyeing Chamber No"
+  },
+  {
+   "fieldname": "knitting_machine_no",
+   "fieldtype": "Data",
+   "label": "Knitting Machine No",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sample",
+   "fieldtype": "Data",
+   "label": "Sample"
+  },
+  {
+   "fieldname": "scrap",
+   "fieldtype": "Data",
+   "label": "Scrap"
+  },
+  {
+   "fieldname": "col_e",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "approved_sample_checked",
+   "fieldtype": "Select",
+   "label": "Approved Sample Checked",
+   "options": "\nAccepted\nCond Accepted\nNot Accepted\nNot Applicable"
+  },
+  {
+   "fieldname": "gold_seal_sample_checked",
+   "fieldtype": "Select",
+   "label": "Gold Seal Sample Checked",
+   "options": "\nAccepted\nCond Accepted\nNot Accepted\nNot Applicable"
+  },
+  {
+   "fieldname": "shade_checked",
+   "fieldtype": "Select",
+   "label": "Shade Checked",
+   "options": "\nAccepted\nCond Accepted\nNot Accepted\nNot Applicable"
+  },
+  {
+   "fieldname": "wicking",
+   "fieldtype": "Select",
+   "label": "Wicking",
+   "options": "\nAccepted\nCond Accepted\nNot Accepted\nNot Applicable"
+  },
+  {
+   "fieldname": "col_f",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "-",
+   "fieldname": "crow_feet",
+   "fieldtype": "Select",
+   "label": "Crow Feet",
+   "options": "-\nMild\nHeavy"
+  },
+  {
+   "default": "-",
+   "fieldname": "patta_problem",
+   "fieldtype": "Select",
+   "label": "Patta Problem",
+   "options": "-\nMild\nHeavy"
+  },
+  {
+   "default": "-",
+   "fieldname": "vertical_line",
+   "fieldtype": "Select",
+   "label": "Vertical Line",
+   "options": "-\nMild\nHeavy"
+  },
+  {
+   "default": "-",
+   "fieldname": "rope_mark",
+   "fieldtype": "Select",
+   "label": "Rope Mark",
+   "options": "-\nMild\nHeavy"
+  },
+  {
+   "default": "-",
+   "fieldname": "knurling",
+   "fieldtype": "Select",
+   "label": "Knurling",
+   "options": "-\nMild\nHeavy"
+  },
+  {
+   "default": "-",
+   "fieldname": "mild_snagging",
+   "fieldtype": "Select",
+   "label": "Mild Snagging",
+   "options": "-\nMild\nHeavy"
+  },
+  {
+   "fieldname": "remarks_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "is_submittable": 0,
+ "issingle": 0,
+ "istable": 0,
+ "links": [],
+ "modified": "2026-10-14 21:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Production Module",
+ "name": "Roll Inspection",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Manufacturing Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Production Supervisor",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Inspection Checker",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 0,
+   "delete": 0,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Process Operator",
+   "share": 0,
+   "write": 0
+  },
+  {
+   "create": 0,
+   "delete": 0,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Manufacturing User",
+   "share": 0,
+   "write": 0
+  }
+ ],
+ "search_fields": "roll,job_card,work_order,grade",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "roll",
+ "track_changes": 1
+}

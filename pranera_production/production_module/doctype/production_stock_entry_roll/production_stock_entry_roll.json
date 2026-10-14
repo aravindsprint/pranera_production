@@ -1,0 +1,117 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-14 21:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "roll_no",
+  "item_code",
+  "batch_no",
+  "uom",
+  "total_qty",
+  "col1",
+  "weight_before",
+  "weight_after",
+  "process_loss",
+  "grade",
+  "roll_inspection"
+ ],
+ "fields": [
+  {
+   "columns": 2,
+   "fieldname": "roll_no",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Roll No",
+   "options": "Roll",
+   "reqd": 1
+  },
+  {
+   "columns": 2,
+   "fieldname": "item_code",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item (Before)",
+   "options": "Item"
+  },
+  {
+   "columns": 2,
+   "fieldname": "batch_no",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Batch (Before)",
+   "options": "Batch"
+  },
+  {
+   "columns": 1,
+   "fieldname": "uom",
+   "fieldtype": "Data",
+   "label": "UOM"
+  },
+  {
+   "columns": 1,
+   "fieldname": "total_qty",
+   "fieldtype": "Int",
+   "label": "Pcs Qty"
+  },
+  {
+   "fieldname": "col1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "columns": 1,
+   "fieldname": "weight_before",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Weight Before",
+   "precision": "3"
+  },
+  {
+   "columns": 1,
+   "fieldname": "weight_after",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Weight After",
+   "precision": "3"
+  },
+  {
+   "columns": 1,
+   "fieldname": "process_loss",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Process Loss",
+   "precision": "3",
+   "read_only": 1
+  },
+  {
+   "fieldname": "grade",
+   "fieldtype": "Data",
+   "label": "Grade",
+   "read_only": 1
+  },
+  {
+   "fieldname": "roll_inspection",
+   "fieldtype": "Link",
+   "label": "Roll Inspection",
+   "options": "Roll Inspection",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "is_submittable": 0,
+ "issingle": 0,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-10-14 21:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Production Module",
+ "name": "Production Stock Entry Roll",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}

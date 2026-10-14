@@ -1,0 +1,63 @@
+--- a/pranera_knit/api/pick_order.py	2026-10-14 16:50:44.490698086 +0000
++++ b/pranera_knit/api/pick_order.py	2026-10-14 16:51:00.986342596 +0000
+@@ -265,13 +265,18 @@
+     since a Pending/In Progress Assignment's only progress lives in its
+     persisted-but-unsubmitted scanned_rolls (once submitted, status flips to
+     Completed and it drops out of this list entirely)."""
++    filters = {
++        "assigned_to": frappe.session.user,
++        "docstatus": 1,
++        "status": ["in", ["Pending", "In Progress"]],
++    }
++    # Production pick orders (pranera_production: MTM against a Job Card)
++    # are executed in the Production App, not here.
++    if frappe.get_meta("Roll Pick Assignment").has_field("custom_job_card"):
++        filters["custom_job_card"] = ["is", "not set"]
+     assignments = frappe.get_all(
+         "Roll Pick Assignment",
+-        filters={
+-            "assigned_to": frappe.session.user,
+-            "docstatus": 1,
+-            "status": ["in", ["Pending", "In Progress"]],
+-        },
++        filters=filters,
+         fields=[
+             "name", "posting_date", "pick_type", "work_order", "project",
+             "sales_order", "manufactured_qty",
+@@ -531,9 +536,36 @@
+                 "rolls must match the target Work Order's project"
+             ).format(roll_no, roll.project, doc.work_order, wo_project))
+ 
++    _apply_current_roll_state(roll_no, roll)
+     return _record_scan(doc, roll_no, roll, source_warehouse)
+ 
+ 
++def _apply_current_roll_state(roll_no, roll):
++    """pranera_production compatibility. Once a roll has been through a
++    process (dyeing, stenter, inspection ...), Roll.item_code / batch /
++    roll_weight still hold the ORIGINAL greige values and the live values
++    are in current_item / current_batch / current_weight. Use the live
++    values for batch matching and quantity. A roll that is in process
++    (sitting in a workstation WIP against a Work Order) can't be picked.
++    No-op on sites without pranera_production (fields absent)."""
++    meta = frappe.get_meta("Roll")
++    if not meta.has_field("current_batch"):
++        return
++    cur = frappe.db.get_value(
++        "Roll", roll_no,
++        ["current_status", "current_item", "current_batch", "current_weight", "current_work_order"],
++        as_dict=True,
++    ) or {}
++    if cur.get("current_status") == "In Process":
++        frappe.throw(_("Roll {0} is in process for Work Order {1} — it can't be picked until it is manufactured").format(
++            roll_no, cur.get("current_work_order")))
++    if cur.get("current_item") or cur.get("current_batch"):
++        roll.item_code = cur.get("current_item") or roll.item_code
++        roll.batch = cur.get("current_batch") or roll.batch
++        if flt(cur.get("current_weight")):
++            roll.roll_weight = flt(cur.get("current_weight"))
++
++
+ def _is_received_external_roll(roll):
+     """True when the roll came from a Subcontracting / Purchase Order and
+     its batch has been received against a submitted, non-cancelled

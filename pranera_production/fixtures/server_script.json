@@ -1,0 +1,15 @@
+[
+ {
+  "allow_guest": 0,
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Server Script",
+  "doctype_event": "Before Save",
+  "modified": "2026-10-14 21:00:00.000000",
+  "module": null,
+  "name": "roll_packing_list_single_batch",
+  "reference_doctype": "Roll Packing List",
+  "script": "# All rows (and their linked Roll records) must share one batch.\n# Updated by pranera_production: a roll's batch changes as it moves through\n# processes (greige -> dyed -> finished). Roll.batch keeps the ORIGINAL\n# greige batch; the live batch is Roll.current_batch. Compare against\n# current_batch when it is set, else the original batch.\nrows = doc.roll_packing_list_item or []\nmissing = []\nbatch_rolls = {}\nroll_mismatch = []\n\nfor r in rows:\n    label = str(r.roll_no or (\"Row \" + str(r.idx)))\n    if not r.batch:\n        missing.append(str(r.idx))\n        continue\n    if r.batch not in batch_rolls:\n        batch_rolls[r.batch] = []\n    batch_rolls[r.batch].append(label)\n    if r.roll_no:\n        roll_vals = frappe.db.get_value(\"Roll\", r.roll_no, [\"batch\", \"current_batch\"], as_dict=True) or {}\n        roll_batch = roll_vals.get(\"current_batch\") or roll_vals.get(\"batch\")\n        if roll_batch != r.batch:\n            roll_mismatch.append(\n                \"<li>Row \" + str(r.idx) + \" - Roll <b>\" + str(r.roll_no)\n                + \"</b>: Roll batch is <b>\" + str(roll_batch or \"(empty)\")\n                + \"</b>, row batch is <b>\" + str(r.batch) + \"</b></li>\"\n            )\n\nif missing:\n    frappe.throw(\"Batch is missing in row(s): \" + \", \".join(missing), title=\"Batch Missing\")\n\nif len(batch_rolls) > 1:\n    msg = \"All rolls in a Roll Packing List must be from the same batch. Found \" + str(len(batch_rolls)) + \" batches:<ul>\"\n    for b in batch_rolls:\n        msg += \"<li><b>\" + str(b) + \"</b> (\" + str(len(batch_rolls[b])) + \" rolls): \" + \", \".join(batch_rolls[b]) + \"</li>\"\n    frappe.throw(msg + \"</ul>\", title=\"Multiple Batches Not Allowed\")\n\nif roll_mismatch:\n    frappe.throw(\"Linked Roll batch does not match the packing list batch:<ul>\" + \"\".join(roll_mismatch) + \"</ul>\", title=\"Roll Batch Mismatch\")\n",
+  "script_type": "DocType Event"
+ }
+]

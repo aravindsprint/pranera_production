@@ -1,0 +1,54 @@
+[
+ {
+  "creation": "2026-10-14 21:00:00.000000",
+  "desk_access": 1,
+  "disabled": 0,
+  "doctype": "Role",
+  "is_custom": 0,
+  "modified": "2026-10-14 21:00:00.000000",
+  "modified_by": "Administrator",
+  "name": "Production Supervisor",
+  "owner": "Administrator",
+  "role_name": "Production Supervisor",
+  "two_factor_auth": 0
+ },
+ {
+  "creation": "2026-10-14 21:00:00.000000",
+  "desk_access": 1,
+  "disabled": 0,
+  "doctype": "Role",
+  "is_custom": 0,
+  "modified": "2026-10-14 21:00:00.000000",
+  "modified_by": "Administrator",
+  "name": "Process Operator",
+  "owner": "Administrator",
+  "role_name": "Process Operator",
+  "two_factor_auth": 0
+ },
+ {
+  "creation": "2026-10-14 21:00:00.000000",
+  "desk_access": 1,
+  "disabled": 0,
+  "doctype": "Role",
+  "is_custom": 0,
+  "modified": "2026-10-14 21:00:00.000000",
+  "modified_by": "Administrator",
+  "name": "Chemical Issuer",
+  "owner": "Administrator",
+  "role_name": "Chemical Issuer",
+  "two_factor_auth": 0
+ },
+ {
+  "creation": "2026-10-14 21:00:00.000000",
+  "desk_access": 1,
+  "disabled": 0,
+  "doctype": "Role",
+  "is_custom": 0,
+  "modified": "2026-10-14 21:00:00.000000",
+  "modified_by": "Administrator",
+  "name": "Inspection Checker",
+  "owner": "Administrator",
+  "role_name": "Inspection Checker",
+  "two_factor_auth": 0
+ }
+]

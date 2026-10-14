@@ -1,0 +1,142 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "field:mistake_name",
+ "creation": "2026-10-14 21:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "mistake_name",
+  "applies_to",
+  "sequence",
+  "disabled",
+  "col1",
+  "one_point",
+  "two_point",
+  "four_point",
+  "force_grade_3"
+ ],
+ "fields": [
+  {
+   "fieldname": "mistake_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Mistake Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "default": "Both",
+   "fieldname": "applies_to",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Applies To",
+   "options": "Both\nFabric\nCollar Cuff"
+  },
+  {
+   "fieldname": "sequence",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Sequence"
+  },
+  {
+   "fieldname": "disabled",
+   "fieldtype": "Check",
+   "label": "Disabled"
+  },
+  {
+   "fieldname": "col1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1",
+   "fieldname": "one_point",
+   "fieldtype": "Int",
+   "label": "One Point Value"
+  },
+  {
+   "default": "2",
+   "fieldname": "two_point",
+   "fieldtype": "Int",
+   "label": "Two Point Value"
+  },
+  {
+   "default": "4",
+   "fieldname": "four_point",
+   "fieldtype": "Int",
+   "label": "Four Point Value"
+  },
+  {
+   "description": "Any occurrence of this mistake makes the roll Grade 3",
+   "fieldname": "force_grade_3",
+   "fieldtype": "Check",
+   "label": "Force Grade 3"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "is_submittable": 0,
+ "issingle": 0,
+ "istable": 0,
+ "links": [],
+ "modified": "2026-10-14 21:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Production Module",
+ "name": "Inspection Mistake",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Manufacturing Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Production Supervisor",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 0,
+   "delete": 0,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Inspection Checker",
+   "share": 0,
+   "write": 0
+  }
+ ],
+ "sort_field": "sequence",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

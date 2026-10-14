@@ -1,0 +1,115 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-14 21:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "grade",
+  "no_of_rolls",
+  "weight",
+  "qty_pcs",
+  "percentage",
+  "vertical_line",
+  "rope_mark",
+  "knurling",
+  "mild_snagging",
+  "crow_feet",
+  "patta_problem"
+ ],
+ "fields": [
+  {
+   "columns": 1,
+   "fieldname": "grade",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Grade"
+  },
+  {
+   "columns": 1,
+   "fieldname": "no_of_rolls",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "No Of Rolls"
+  },
+  {
+   "columns": 1,
+   "fieldname": "weight",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Weight",
+   "precision": "3"
+  },
+  {
+   "columns": 1,
+   "fieldname": "qty_pcs",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Qty (Pcs)"
+  },
+  {
+   "columns": 1,
+   "fieldname": "percentage",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Weight %",
+   "precision": "2"
+  },
+  {
+   "columns": 1,
+   "fieldname": "vertical_line",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Vertical Line"
+  },
+  {
+   "columns": 1,
+   "fieldname": "rope_mark",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Rope Mark"
+  },
+  {
+   "columns": 1,
+   "fieldname": "knurling",
+   "fieldtype": "Int",
+   "label": "Knurling"
+  },
+  {
+   "columns": 1,
+   "fieldname": "mild_snagging",
+   "fieldtype": "Int",
+   "label": "Mild Snagging"
+  },
+  {
+   "columns": 1,
+   "fieldname": "crow_feet",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Crow Feet"
+  },
+  {
+   "columns": 1,
+   "fieldname": "patta_problem",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Patta Problem"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "is_submittable": 0,
+ "issingle": 0,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-10-14 21:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Production Module",
+ "name": "Inspection Grade Summary",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}

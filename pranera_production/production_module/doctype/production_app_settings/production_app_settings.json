@@ -1,0 +1,210 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-14 21:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_section",
+  "mtm_naming_series",
+  "mf_naming_series",
+  "col_naming",
+  "pick_tolerance_pct",
+  "chemical_store_warehouse",
+  "process_section",
+  "keep_weight_operations",
+  "col_process",
+  "inspection_operation",
+  "require_inspection_before_mf",
+  "grading_section",
+  "grade_2_min_points",
+  "col_grading",
+  "grade_3_min_points"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_section",
+   "fieldtype": "Section Break",
+   "label": "Naming"
+  },
+  {
+   "default": "MTM/26/",
+   "description": "Naming series used for MTM Stock Entries created by the app (must exist in Stock Entry naming series)",
+   "fieldname": "mtm_naming_series",
+   "fieldtype": "Data",
+   "label": "Material Transfer for Manufacture Series"
+  },
+  {
+   "default": "MF/26/",
+   "fieldname": "mf_naming_series",
+   "fieldtype": "Data",
+   "label": "Manufacture Series"
+  },
+  {
+   "fieldname": "col_naming",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "3",
+   "fieldname": "pick_tolerance_pct",
+   "fieldtype": "Float",
+   "label": "Pick Tolerance %"
+  },
+  {
+   "fieldname": "chemical_store_warehouse",
+   "fieldtype": "Link",
+   "label": "Default Chemical Store Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "process_section",
+   "fieldtype": "Section Break",
+   "label": "Process"
+  },
+  {
+   "default": "DYEING\nRE DYEING\nDOUBLE DYEING\nDYEING + BIO WASH\nBIO WASH + DOUBLE DYEING\nDYEING + WICKING",
+   "description": "One operation per line. When a Work Order's last operation is one of these, the MF keeps each roll's previous weight (wet process \u2014 weight is captured at a later process).",
+   "fieldname": "keep_weight_operations",
+   "fieldtype": "Small Text",
+   "label": "Operations That Keep Roll Weight At MF"
+  },
+  {
+   "fieldname": "col_process",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "INSPECTION",
+   "fieldname": "inspection_operation",
+   "fieldtype": "Link",
+   "label": "Inspection Operation",
+   "options": "Operation"
+  },
+  {
+   "default": "1",
+   "fieldname": "require_inspection_before_mf",
+   "fieldtype": "Check",
+   "label": "Require Roll Inspection Before Inspection MF"
+  },
+  {
+   "fieldname": "grading_section",
+   "fieldtype": "Section Break",
+   "label": "Grading"
+  },
+  {
+   "default": "40",
+   "fieldname": "grade_2_min_points",
+   "fieldtype": "Float",
+   "label": "Grade 2 From Points %"
+  },
+  {
+   "fieldname": "col_grading",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "100",
+   "fieldname": "grade_3_min_points",
+   "fieldtype": "Float",
+   "label": "Grade 3 Above Points %"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "is_submittable": 0,
+ "issingle": 1,
+ "istable": 0,
+ "links": [],
+ "modified": "2026-10-14 21:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Production Module",
+ "name": "Production App Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 0,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 0,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Production Supervisor",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 0,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Manufacturing Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 0,
+   "delete": 0,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Process Operator",
+   "share": 0,
+   "write": 0
+  },
+  {
+   "create": 0,
+   "delete": 0,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Inspection Checker",
+   "share": 0,
+   "write": 0
+  },
+  {
+   "create": 0,
+   "delete": 0,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Chemical Issuer",
+   "share": 0,
+   "write": 0
+  },
+  {
+   "create": 0,
+   "delete": 0,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Roll Picker",
+   "share": 0,
+   "write": 0
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
