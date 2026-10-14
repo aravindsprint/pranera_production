@@ -283,6 +283,21 @@ export const api = {
   searchRolls:        (params = {})      => call(M + 'rolls.search_rolls', params).then(r => r.message || []),
   rollTrace:          (roll_no)          => call(M + 'rolls.get_roll_trace', { roll_no }).then(msg),
 
+  // lot inspection report (port of the Ionic pivot)
+  lotReportJobCards:  (txt)              => call(M + 'report.search_inspection_job_cards', { txt }).then(r => r.message || []),
+  lotReport:          (job_card)         => call(M + 'report.get_lot_report', { job_card }).then(msg),
+
+  // adopt rolls moved before go-live
+  adoptWipContext:    (work_order)       => call(M + 'adopt.get_wip_context', { work_order }).then(msg),
+  adoptWipRoll:       (work_order, item_code, batch_no, roll_no, weight) =>
+                         call(M + 'adopt.adopt_wip_roll', { work_order, item_code, batch_no, roll_no, weight }).then(msg),
+  unadoptWipRoll:     (work_order, roll_no) => call(M + 'adopt.unadopt_wip_roll', { work_order, roll_no }).then(msg),
+  adoptBatches:       (txt)              => call(M + 'adopt.search_batches', { txt }).then(r => r.message || []),
+  adoptStockContext:  (batch_no)         => call(M + 'adopt.get_stock_context', { batch_no }).then(msg),
+  adoptStockRoll:     (batch_no, warehouse, roll_no, weight) =>
+                         call(M + 'adopt.adopt_stock_roll', { batch_no, warehouse, roll_no, weight }).then(msg),
+  unadoptStockRoll:   (batch_no, roll_no) => call(M + 'adopt.unadopt_stock_roll', { batch_no, roll_no }).then(msg),
+
   // dashboard
   dashboard:          (from_date, to_date) => call(M + 'dashboard.get_dashboard', { from_date, to_date }).then(msg),
   pivotData:          (dataset, from_date, to_date) =>

@@ -78,6 +78,9 @@
           </div>
         </div>
 
+        <button v-if="inspectedCount" class="btn btn-outline btn-full" style="margin-bottom:12px"
+                @click="router.push({ path: BASE + '/lot-report', query: { jc: jobCard } })">🧾 Lot Inspection Report / PDF</button>
+
         <div class="card" v-if="ctx.job_card.docstatus === 0">
           <button class="btn btn-primary btn-full" :disabled="completing || !inspectedCount" @click="complete">
             {{ completing ? 'Completing…' : 'Inspection done — complete Job Card' }}

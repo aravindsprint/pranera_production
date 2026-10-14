@@ -85,6 +85,17 @@ cd apps/pranera_knit && git apply /path/to/pranera_knit_current_roll_state.patch
    and the qty is the current weight.
 9. **Offline inspection**: switch the tablet to airplane mode → save 2 rolls → come back
    online → both sync.
+10. **Lot Inspection Report**: open an inspected INSPECTION Job Card → compare the
+    External and Internal PDFs with an old QI report PDF for the same kind of lot.
+    Check the header, the 8-rolls-per-table defect matrix, the grade 3 highlight and
+    the summary.
+11. **Adopt Rolls – In WIP**: take a Work Order whose MTM was made from the desk →
+    pick the transferred batch → scan its rolls. They become `In Process` at the
+    current operation, and adopting more than was transferred (+ tolerance) is refused.
+    Then complete the Job Card and MF as normal.
+12. **Adopt Rolls – In Stock**: take a dyed `…-D` batch in the lot section → scan rolls
+    and enter their weights → they can now be picked for the stenter Work Order.
+    Adopting more than the batch stock in that warehouse is refused.
 
 ## 6. Go-live notes
 
@@ -93,5 +104,12 @@ cd apps/pranera_knit && git apply /path/to/pranera_knit_current_roll_state.patch
 * The ERPNext rule still applies: the MF needs every operation's Job Card completed for
   the quantity (99% over-production allowance on this site). The MF screen says which
   Job Card is pending.
-* Rolls that are already sitting in WIP from before go-live have no history, so the app
-  doesn't know about them. Finish those lots the old way.
+* **Rolls moved before go-live** have no history. Bring them in with **Adopt Rolls**
+  (Production Supervisor):
+  * **In WIP**: for Work Orders whose MTM was made from the desk.
+  * **In Stock**: for batches dyed or finished before go-live.
+
+  This has to be done by scanning, because a greige batch was often split across
+  several dyeing Work Orders and dyed batches have no Roll records, so the system can't
+  tell which roll went where. Adoption is capped by the ledger quantity and can be undone
+  roll by roll.

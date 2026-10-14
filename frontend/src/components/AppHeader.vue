@@ -125,11 +125,13 @@ const menu = computed(() => {
     { title: 'Planning', items: [
       { key: 'create-pick-order', label: 'Create Pick Order', icon: '📝', path: B + '/create-pick-order', show: c() },
       { key: 'create-rolls', label: 'Create / Cut Rolls', icon: '✂️', path: B + '/create-rolls', show: c() },
+      { key: 'adopt-rolls', label: 'Adopt Rolls (pre go-live)', icon: '🧷', path: B + '/adopt-rolls', show: c() },
     ].filter(m => m.show) },
     { title: 'Rolls & Reports', items: [
       { key: 'rolls', label: 'Roll Trace', icon: '🧶', path: B + '/rolls', show: true },
       { key: 'dashboard', label: 'Dashboard', icon: '📈', path: B + '/dashboard', show: c('Inspection Checker', 'Process Operator') },
-      { key: 'pivot', label: 'Pivot', icon: '🧮', path: B + '/pivot', show: c('Inspection Checker', 'Process Operator') },
+      { key: 'lot-report', label: 'Lot Inspection Report', icon: '🧾', path: B + '/lot-report', show: c('Inspection Checker', 'Process Operator') },
+      { key: 'pivot', label: 'Pivot Analysis', icon: '🧮', path: B + '/pivot', show: c('Inspection Checker', 'Process Operator') },
     ].filter(m => m.show) },
   ]
 })

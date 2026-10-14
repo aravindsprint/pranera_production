@@ -31,6 +31,8 @@ const routes = [
   { path: B + '/manufacture', component: () => import('@/pages/manufacture/ManufacturePage.vue') },
   { path: B + '/create-rolls', component: () => import('@/pages/create-rolls/CreateRollsPage.vue') },
   { path: B + '/dashboard', component: () => import('@/pages/dashboard/DashboardPage.vue') },
+  { path: B + '/lot-report', component: () => import('@/pages/lot-report/LotReportPage.vue') },
+  { path: B + '/adopt-rolls', component: () => import('@/pages/adopt-rolls/AdoptRollsPage.vue') },
   { path: B + '/pivot', component: () => import('@/pages/pivot/PivotPage.vue') },
   { path: B + '/no-access', component: () => import('@/pages/NoAccessPage.vue') },
 ]

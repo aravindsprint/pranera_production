@@ -34,6 +34,17 @@ values so knitting reports don't change. The live state is in the new fields:
 process history (`roll_tracking.recompute_current`). Cancelling a Stock Entry or a Job Card
 just removes the rows that document added and recomputes.
 
+## Reports and go-live tools
+
+* **Lot Inspection Report** (`/production-app/lot-report`): port of the Ionic pivot
+  page and its External / Internal PDFs. It shows the lot header, a mistake × roll point
+  matrix (8 rolls per table) with weight, GSM, width, length, point / 100 sqm, grade and
+  defect flags, and a grade summary. It prints to A4 (Save as PDF).
+* **Pivot Analysis** (`/production-app/pivot`): free rows × columns pivot over roll
+  inspections or MF rolls, with CSV export.
+* **Adopt Rolls** (`/production-app/adopt-rolls`): attach rolls that moved before go-live
+  to their Work Order's WIP, or to a batch already in stock.
+
 ## New doctypes (module "Production Module")
 
 * **Production App Settings** (single): naming series, pick tolerance, chemical store,

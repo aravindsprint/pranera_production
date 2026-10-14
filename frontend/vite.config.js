@@ -114,6 +114,8 @@ export default defineConfig(({ command }) => ({
           /^\/api/, /^\/files/, /^\/app/,
           /^\/production-app\/dashboard/,
           /^\/production-app\/pivot/,
+          /^\/production-app\/lot-report/,
+          /^\/production-app\/adopt-rolls/,
         ],
         runtimeCaching: [
           {
