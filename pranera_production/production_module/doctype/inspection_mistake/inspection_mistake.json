@@ -14,7 +14,15 @@
   "one_point",
   "two_point",
   "four_point",
-  "force_grade_3"
+  "force_grade_3",
+  "board_section",
+  "show_on_board",
+  "board",
+  "column_no",
+  "col2",
+  "tile_point",
+  "tile_color",
+  "tile_height"
  ],
  "fields": [
   {
@@ -38,12 +46,14 @@
    "fieldname": "sequence",
    "fieldtype": "Int",
    "in_list_view": 1,
-   "label": "Sequence"
+   "label": "Sequence",
+   "description": "Order of the tile within its column (lowest at the top)"
   },
   {
    "fieldname": "disabled",
    "fieldtype": "Check",
-   "label": "Disabled"
+   "label": "Disabled",
+   "in_list_view": 1
   },
   {
    "fieldname": "col1",
@@ -72,6 +82,62 @@
    "fieldname": "force_grade_3",
    "fieldtype": "Check",
    "label": "Force Grade 3"
+  },
+  {
+   "fieldname": "board_section",
+   "fieldtype": "Section Break",
+   "label": "Inspection Board (Production App)",
+   "description": "Where this mistake's tile appears on the roll inspection screen."
+  },
+  {
+   "fieldname": "show_on_board",
+   "fieldtype": "Check",
+   "label": "Show on Board",
+   "default": "1",
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "board",
+   "fieldtype": "Select",
+   "label": "Board",
+   "options": "Main\nOther",
+   "default": "Other",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "Main Mistakes or Other Mistakes"
+  },
+  {
+   "fieldname": "column_no",
+   "fieldtype": "Int",
+   "label": "Column",
+   "default": "1",
+   "in_list_view": 1,
+   "description": "1 = leftmost. Columns are shown left to right"
+  },
+  {
+   "fieldname": "col2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "tile_point",
+   "fieldtype": "Select",
+   "label": "Tap Adds",
+   "options": "1\n2\n4\nMetre",
+   "default": "4",
+   "description": "Points one tap adds (counted with the 1/2/4 Point Values), or Metre: asks for metres, 4 points each"
+  },
+  {
+   "fieldname": "tile_color",
+   "fieldtype": "Color",
+   "label": "Tile Colour"
+  },
+  {
+   "fieldname": "tile_height",
+   "fieldtype": "Float",
+   "label": "Tile Height",
+   "default": "11",
+   "description": "In % of the board width (the Ionic sizes: 6.65 small \u2026 11 normal \u2026 24 tall)"
   }
  ],
  "index_web_pages_for_search": 0,
@@ -79,7 +145,7 @@
  "issingle": 0,
  "istable": 0,
  "links": [],
- "modified": "2026-10-14 21:00:00.000000",
+ "modified": "2026-10-17 12:10:00.000000",
  "modified_by": "Administrator",
  "module": "Production Module",
  "name": "Inspection Mistake",
@@ -136,7 +202,7 @@
   }
  ],
  "sort_field": "sequence",
- "sort_order": "DESC",
+ "sort_order": "ASC",
  "states": [],
  "track_changes": 1
 }

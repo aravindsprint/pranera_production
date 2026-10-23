@@ -8,7 +8,7 @@ Job Card is completed here or from the desk.
 """
 import frappe
 from frappe import _
-from frappe.utils import flt, now_datetime
+from frappe.utils import flt, get_datetime, now_datetime
 
 from pranera_production.api.common import (
     wo_operations, job_card_for_operation, assert_role, is_inspection_operation,
@@ -73,7 +73,7 @@ def get_job_card_detail(job_card):
         "Work Order", jc.work_order,
         ["name", "production_item", "item_name", "qty", "produced_qty", "status", "project",
          "wip_warehouse", "fg_warehouse", "source_warehouse", "stock_uom", "color", "width",
-         "required_gsm", "commercial_name"],
+         "required_gsm", "commercial_name", "material_transferred_for_manufacturing"],
         as_dict=True,
     )
     ops = []
@@ -124,14 +124,21 @@ def _employee():
 
 
 @frappe.whitelist()
-def start_job_card(job_card):
+def start_job_card(job_card, from_time=None, client_id=None):
+    """from_time: when the operator tapped Start (the device clock) — sent when
+    the tap was queued offline. A re-sent start is a no-op."""
     assert_role("Process Operator", "Inspection Checker")
     jc = frappe.get_doc("Job Card", job_card)
     if jc.docstatus != 0:
+        if client_id:  # replayed after the card was already finished
+            return {"status": jc.status, "message": _("Already {0}").format(jc.status)}
         frappe.throw(_("Job Card {0} is already {1}").format(job_card, jc.status))
+    start = get_datetime(from_time) if from_time else now_datetime()
+    if any(t.from_time and get_datetime(t.from_time) == start for t in jc.time_logs or []):
+        return {"status": jc.status, "message": _("Already started")}
     if any(t.from_time and not t.to_time for t in jc.time_logs or []):
         return {"status": jc.status, "message": _("Already running")}
-    jc.append("time_logs", {"from_time": now_datetime(), "employee": _employee()})
+    jc.append("time_logs", {"from_time": start, "employee": _employee()})
     jc.flags.ignore_permissions = True
     jc.save()
     frappe.db.commit()
@@ -139,19 +146,22 @@ def start_job_card(job_card):
 
 
 @frappe.whitelist()
-def complete_job_card(job_card, completed_qty=None, submit=1):
+def complete_job_card(job_card, completed_qty=None, submit=1, to_time=None, client_id=None):
     """Closes the running time log (or adds one) with the completed qty and,
-    by default, submits the Job Card."""
+    by default, submits the Job Card. to_time: when the operator tapped End
+    (device clock, for a tap queued offline). A re-sent end is a no-op."""
     assert_role("Process Operator", "Inspection Checker")
     jc = frappe.get_doc("Job Card", job_card)
     if jc.docstatus != 0:
+        if client_id:
+            return {"status": jc.status, "docstatus": jc.docstatus, "message": _("Already {0}").format(jc.status)}
         frappe.throw(_("Job Card {0} is already submitted").format(job_card))
     done = sum(flt(t.completed_qty) for t in jc.time_logs or [] if t.to_time)
     qty = flt(completed_qty) if completed_qty not in (None, "") else max(0.0, flt(jc.for_quantity) - done)
-    now = now_datetime()
+    now = get_datetime(to_time) if to_time else now_datetime()
     open_log = next((t for t in (jc.time_logs or []) if t.from_time and not t.to_time), None)
     if open_log:
-        open_log.to_time = now
+        open_log.to_time = max(now, get_datetime(open_log.from_time))  # device clocks drift
         open_log.completed_qty = qty
     else:
         jc.append("time_logs", {"from_time": now, "to_time": now, "completed_qty": qty,

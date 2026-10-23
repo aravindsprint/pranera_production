@@ -1,0 +1,46 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-16 18:30:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "unit_warehouse",
+  "chemical_store"
+ ],
+ "fields": [
+  {
+   "fieldname": "unit_warehouse",
+   "fieldtype": "Link",
+   "options": "Warehouse",
+   "label": "Unit (Warehouse Group)",
+   "in_list_view": 1,
+   "reqd": 1,
+   "description": "A Job Card belongs to this unit when its Work Order's WIP warehouse is this warehouse or under it"
+  },
+  {
+   "fieldname": "chemical_store",
+   "fieldtype": "Link",
+   "options": "Warehouse",
+   "label": "Chemical Store",
+   "in_list_view": 1,
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "is_submittable": 0,
+ "issingle": 0,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-10-16 18:30:00.000000",
+ "modified_by": "Administrator",
+ "module": "Production Module",
+ "name": "Production Chemical Store",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}

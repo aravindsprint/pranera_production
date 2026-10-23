@@ -41,6 +41,7 @@ doc_events = {
     # Job Card moves the rolls on to the next operation (process only —
     # weight is captured at the MF).
     "Job Card": {
+        "validate": "pranera_production.roll_tracking.on_job_card_validate",
         "on_submit": "pranera_production.roll_tracking.on_job_card_submit",
         "on_cancel": "pranera_production.roll_tracking.on_job_card_cancel",
     },
@@ -53,11 +54,14 @@ doc_events = {
 }
 
 fixtures = [
-    {"doctype": "Custom Field", "filters": [["module", "=", "Production Module"]]},
+    # Custom Fields are NOT fixtures: a fixture import is all-or-nothing and
+    # fails when a site already has a field of the same name (e.g. a local
+    # textiles_and_garments branch whose Roll has current_warehouse).
+    # schema.ensure_fields() creates them in after_migrate instead, from
+    # setup_data/custom_fields.json, skipping any field the doctype already has.
     {"doctype": "Role", "filters": [["name", "in", [
         "Production Supervisor", "Process Operator", "Chemical Issuer", "Inspection Checker",
     ]]]},
-    {"doctype": "Inspection Mistake"},
     # Updated to compare against Roll.current_batch (falls back to Roll.batch)
     # now that a roll's batch changes as it moves through processes.
     {"doctype": "Server Script", "filters": [["name", "in", ["roll_packing_list_single_batch"]]]},

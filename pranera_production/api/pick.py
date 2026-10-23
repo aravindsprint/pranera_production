@@ -25,9 +25,40 @@ from frappe.utils import flt, cint, now_datetime, today
 from pranera_production.api.common import (
     settings, get_roll, parse_scan, is_pcs, stock_entry_base, job_card_item_map,
     wo_operations, job_card_for_operation, first_job_card, assert_role,
+    effective_roll, ROLL_FIELDS,
 )
 from pranera_production.roll_tracking import ENTRY_ROLL_PICK, ST_IN_PROCESS
 
+
+
+def _save_execution(doc):
+    """Save the execution state (execution warehouses, scanned_rolls) of a
+    SUBMITTED Roll Pick Assignment. On erp.pranera.in these fields are
+    allow-on-submit; a site whose doctype doesn't mark them so would refuse
+    with "Not allowed to change ... after submission". Only those fields are
+    changed here, so skip that check explicitly."""
+    doc.flags.ignore_validate_update_after_submit = True
+    doc.save()
+
+
+def _is_transit(doc, target_warehouse):
+    return (doc.get("pick_type") == "To Work Order"
+            and (target_warehouse or "").strip().lower().startswith("in transit"))
+
+
+def _transfer_kind(doc, target_warehouse):
+    """(Stock Entry purpose, naming series) for a pick.
+
+    * To an "In Transit…" warehouse (sent out to a dyeing unit): a plain
+      Material Transfer, series MT/26/. Not against the Work Order / Job Card;
+      the rolls stay In Stock in the transit warehouse and are picked again
+      (MTM) when they reach the WIP.
+    * Otherwise: Material Transfer for Manufacture against the Job Card,
+      series MTM/26/."""
+    s = settings()
+    if _is_transit(doc, target_warehouse):
+        return "Material Transfer", (s.get("transit_naming_series") or "MT/26/")
+    return "Material Transfer for Manufacture", s.mtm_naming_series
 
 def _tolerance():
     return (flt(settings().pick_tolerance_pct) or 3.0) / 100.0
@@ -288,7 +319,7 @@ def get_pick_order_detail(name):
 
 
 @frappe.whitelist()
-def update_execution_warehouse(pick_order, source_warehouse=None, target_warehouse=None):
+def update_execution_warehouse(pick_order, source_warehouse=None, target_warehouse=None, client_id=None):
     doc = frappe.get_doc("Roll Pick Assignment", pick_order)
     _assert_assigned_to_me(doc)
     if source_warehouse and source_warehouse != doc.get("execution_source_warehouse"):
@@ -298,9 +329,42 @@ def update_execution_warehouse(pick_order, source_warehouse=None, target_warehou
     if target_warehouse:
         doc.execution_target_warehouse = target_warehouse
     doc.flags.ignore_permissions = True
-    doc.save()
+    _save_execution(doc)
     frappe.db.commit()
     return {"success": True}
+
+
+@frappe.whitelist()
+def get_pick_candidates(pick_order):
+    """For scanning offline: every roll this pick order could accept, checked
+    the same way scan_roll checks one roll (required item, allowed batch,
+    not in process, packed / received, project). The device checks a scanned
+    roll against this list; the server checks it again when the scan syncs."""
+    doc = frappe.get_doc("Roll Pick Assignment", pick_order)
+    _assert_assigned_to_me(doc)
+    items = [r.item_code for r in _required_items(doc.work_order)]
+    if not items:
+        return {"rolls": [], "at": str(now_datetime())}
+    allowed = sorted({b.batch for b in (doc.batch_items or []) if b.batch})
+    cond = "and ifnull(nullif(current_batch,''), batch) in %(batches)s" if allowed else ""
+    rows = frappe.db.sql(f"""
+        select {", ".join(ROLL_FIELDS)} from `tabRoll`
+        where ifnull(nullif(current_item,''), item_code) in %(items)s
+          and ifnull(current_status,'') != %(in_process)s {cond}
+        order by name limit 3000""",
+        {"items": items, "batches": allowed or [""], "in_process": ST_IN_PROCESS}, as_dict=True)
+    wo_project = frappe.db.get_value("Work Order", doc.work_order, "project")
+    taken = {r.roll_no for r in _prior_picked(doc)}
+    out = []
+    for row in rows:
+        r = effective_roll(row)
+        if r.name in taken or (wo_project and r.project and r.project != wo_project):
+            continue
+        if not _is_packed_or_received(r):
+            continue
+        out.append({"roll_no": r.name, "item_code": r.eff_item, "batch_no": r.eff_batch,
+                    "qty": r.eff_qty, "uom": r.uom, "roll_weight": r.eff_weight, "warehouse": r.eff_warehouse})
+    return {"rolls": out, "at": str(now_datetime())}
 
 
 def _roll_chain(roll_no):
@@ -344,9 +408,19 @@ def _is_packed_or_received(roll):
 
 
 @frappe.whitelist()
-def scan_roll(pick_order, roll_no, source_warehouse):
+def scan_roll(pick_order, roll_no, source_warehouse, client_id=None):
+    """client_id: set when the scan was made offline and is being sent from
+    the device's queue — a roll this order already has is then accepted as a
+    re-send instead of an error."""
     doc = frappe.get_doc("Roll Pick Assignment", pick_order)
     _assert_assigned_to_me(doc)
+    if client_id:
+        rn = parse_scan(roll_no)
+        hit = next((r for r in (doc.scanned_rolls or []) if r.roll_no == rn), None)
+        if hit:
+            return {"roll_no": hit.roll_no, "item_code": hit.item_code, "warehouse": hit.warehouse,
+                    "batch_no": hit.batch_no, "qty": hit.qty, "uom": hit.uom, "roll_weight": hit.roll_weight,
+                    "duplicate": True}
     if not doc.get("custom_job_card"):
         frappe.throw(_("{0} is not a production pick order").format(pick_order))
     if not source_warehouse:
@@ -396,21 +470,23 @@ def scan_roll(pick_order, roll_no, source_warehouse):
     doc.append("scanned_rolls", {**row, "scanned_by": frappe.session.user, "scanned_at": now_datetime()})
     doc.execution_source_warehouse = source_warehouse
     doc.flags.ignore_permissions = True
-    doc.save()
+    _save_execution(doc)
     frappe.db.commit()
     return row
 
 
 @frappe.whitelist()
-def remove_scanned_roll(pick_order, roll_no):
+def remove_scanned_roll(pick_order, roll_no, client_id=None):
     doc = frappe.get_doc("Roll Pick Assignment", pick_order)
     _assert_assigned_to_me(doc)
     before = len(doc.scanned_rolls or [])
     doc.set("scanned_rolls", [r for r in (doc.scanned_rolls or []) if r.roll_no != roll_no])
     if len(doc.scanned_rolls) == before:
+        if client_id:
+            return {"success": True, "duplicate": True}
         frappe.throw(_("Roll {0} was not found in this session").format(roll_no))
     doc.flags.ignore_permissions = True
-    doc.save()
+    _save_execution(doc)
     frappe.db.commit()
     return {"success": True}
 
@@ -480,13 +556,28 @@ def submit_pick_order(pick_order, posting_date=None, submit_stock_entry=1):
     pl.db_set("roll_pick_assignment", doc.name, update_modified=False)
 
     # ── MTM Stock Entry against the Job Card ──
-    se = stock_entry_base("Material Transfer for Manufacture", settings().mtm_naming_series,
-                          wo.company, posting_date)
+    purpose, series = _transfer_kind(doc, target)
+    is_mtm = purpose == "Material Transfer for Manufacture"
+    se = stock_entry_base(purpose, series, wo.company, posting_date)
+    # Work Order on both. ERPNext keeps it on a plain Material Transfer but
+    # counts transferred qty only for an MTM (and refuses a Job Card on an MT),
+    # so an MT links to the WO without changing it.
     se.work_order = doc.work_order
-    se.job_card = job_card
+    if is_mtm:
+        se.job_card = job_card
+    elif se.meta.has_field("custom_reference_dyeing_work_order"):
+        se.custom_reference_dyeing_work_order = doc.work_order
     se.custom_job_card = job_card
     se.project = wo.project
-    se.bom_no = frappe.db.get_value("Work Order", doc.work_order, "bom_no")
+    if is_mtm:
+        se.bom_no = frappe.db.get_value("Work Order", doc.work_order, "bom_no")
+        # ERPNext's Stock Entry.validate resets For Quantity (fg_completed_qty) to 0
+        # unless From BOM is ticked — and the Work Order's "Material Transferred for
+        # Manufacturing" is the sum of that For Quantity.
+        # With "Validate Components and Quantities Per BOM" on, From BOM makes
+        # ERPNext demand every BOM item (chemicals too) in this entry, so there
+        # For Quantity is written after submit instead (see below).
+        se.from_bom = 0 if _bom_qty_check_on() else 1
     se.from_warehouse = source
     se.to_warehouse = target
     se.custom_roll_wise_pick_list = pl.name
@@ -495,9 +586,11 @@ def submit_pick_order(pick_order, posting_date=None, submit_stock_entry=1):
     se.colour = wo.color
     # For Quantity = the Work Order-UOM quantity moved (fabric Kgs). Pcs
     # trims (collar / cuff) travel with the lot but don't add to it.
-    se.fg_completed_qty = flt(sum(flt(g["qty"]) for g in groups.values()
-                                  if (g["uom"] or "Kgs") == (wo.stock_uom or "Kgs")), 3)
-    jci = job_card_item_map(job_card)
+    lot_qty = 0
+    if is_mtm:
+        se.fg_completed_qty = lot_qty = flt(sum(flt(g["qty"]) for g in groups.values()
+                                      if (g["uom"] or "Kgs") == (wo.stock_uom or "Kgs")), 3)
+    jci = job_card_item_map(job_card) if is_mtm else {}
     for g in groups.values():
         se.append("items", {
             "s_warehouse": g["warehouse"], "t_warehouse": target,
@@ -506,9 +599,12 @@ def submit_pick_order(pick_order, posting_date=None, submit_stock_entry=1):
             "batch_no": g["batch"], "use_serial_batch_fields": 1,
             "job_card_item": jci.get(g["item_code"]),
         })
-        se.append("custom_batch_wise_packing_summary", {
-            "batch": g["batch"], "qty": g["qty"], "no_of_rolls": g["rolls"],
-        })
+        # erp.pranera.in has this summary table on Stock Entry; a site
+        # without it (older local copy) just skips it.
+        if se.meta.has_field("custom_batch_wise_packing_summary"):
+            se.append("custom_batch_wise_packing_summary", {
+                "batch": g["batch"], "qty": g["qty"], "no_of_rolls": g["rolls"],
+            })
     for r in rolls:
         se.append("custom_production_rolls", {
             "roll_no": r.roll_no, "item_code": r.item_code, "batch_no": r.batch_no,
@@ -518,12 +614,12 @@ def submit_pick_order(pick_order, posting_date=None, submit_stock_entry=1):
     se.flags.ignore_permissions = True
     se.insert()
     if cint(submit_stock_entry):
-        se.submit()
+        se.submit()  # roll_tracking.on_stock_entry_submit sets the WO transferred qty
 
     doc.reload()
     doc.set("scanned_rolls", [])
     doc.flags.ignore_permissions = True
-    doc.save()
+    _save_execution(doc)
     frappe.db.set_value("Roll Pick Assignment", doc.name, "status",
                         "Completed" if cint(submit_stock_entry) else "In Progress")
     frappe.db.commit()
@@ -534,3 +630,29 @@ def submit_pick_order(pick_order, posting_date=None, submit_stock_entry=1):
         "rolls": len(rolls),
         "qty": round(sum(flt(r.qty) for r in rolls), 3),
     }
+
+
+def _bom_qty_check_on():
+    meta = frappe.get_meta("Manufacturing Settings")
+    return bool(meta.has_field("validate_components_quantities_per_bom")
+                and cint(frappe.db.get_single_value("Manufacturing Settings", "validate_components_quantities_per_bom")))
+
+
+def set_transferred_lot_qty(se, lot_qty=None):
+    """Make sure a submitted pick MTM carries its lot qty as For Quantity, and
+    that the Work Order's "Material Transferred for Manufacturing" (the sum of
+    For Quantity over its MTMs) counts it. pranera_planning's T&A check won't
+    let the Job Card start while that is 0."""
+    if not se.work_order or se.purpose != "Material Transfer for Manufacture":
+        return
+    if lot_qty is None:  # Work Order-UOM qty moved (fabric Kgs, not Pcs trims)
+        wo_uom = frappe.db.get_value("Work Order", se.work_order, "stock_uom") or "Kgs"
+        lot_qty = sum(flt(d.transfer_qty) for d in se.items if (d.stock_uom or "Kgs") == wo_uom)
+    lot_qty = flt(lot_qty, 3)
+    if not lot_qty:
+        return
+    if flt(se.fg_completed_qty, 3) != lot_qty or not cint(se.from_bom):
+        se.db_set({"from_bom": 1, "fg_completed_qty": lot_qty}, update_modified=False)
+    wo = frappe.get_doc("Work Order", se.work_order)
+    wo.update_work_order_qty()
+    wo.update_status()

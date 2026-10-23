@@ -12,6 +12,7 @@
       </div>
       <div v-if="loading" class="loading-center"><div class="spinner"></div></div>
       <div v-else-if="error" class="alert alert-error">{{ error }}</div>
+      <div v-if="offlineAt" class="alert alert-warning">Offline — list as of {{ new Date(offlineAt).toLocaleString() }}. Job Cards opened while online can be started and ended offline.</div>
       <div v-else-if="!shown.length" class="empty-state"><div class="empty-state__icon">⚙️</div><div class="empty-state__title">Nothing here</div></div>
       <button v-for="j in shown" :key="j.name" class="card jc" @click="router.push(BASE + '/job-cards/' + encodeURIComponent(j.name))">
         <div class="jc__top">
@@ -35,6 +36,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import { api } from '@/api/frappe'
+import { cached } from '@/composables/useOffline'
 import { BASE, fmt, statusClass } from '@/utils'
 
 const router = useRouter()
@@ -44,6 +46,7 @@ const error = ref('')
 const txt = ref('')
 const operation = ref(localStorage.getItem('PROD_JC_OP') || '')
 const withRolls = ref(false)
+const offlineAt = ref(null)
 let t = null
 
 const operations = computed(() => [...new Set(rows.value.map(r => r.operation).concat(operation.value ? [operation.value] : []))].filter(Boolean).sort())
@@ -54,7 +57,10 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    rows.value = await api.jobCards({ txt: txt.value || undefined, operation: operation.value || undefined })
+    const r = await cached('jcs:' + (operation.value || '') + ':' + (txt.value || ''),
+      () => api.jobCards({ txt: txt.value || undefined, operation: operation.value || undefined }))
+    rows.value = r.data
+    offlineAt.value = r.offline ? r.at : null
   } catch (err) {
     error.value = err.message
   } finally {

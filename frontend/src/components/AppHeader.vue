@@ -65,6 +65,11 @@
         <div class="ah-header__title">{{ title }}</div>
         <div class="ah-header__sub" v-if="subtitle">{{ subtitle }}</div>
       </div>
+      <button
+        v-if="isDev" class="ah-env" :class="`ah-env--${backendMode}`"
+        :title="`Backend: ${backendLabel()} — click to change`"
+        @click="router.push(B + '/settings')"
+      >{{ backendMode === 'live' ? 'LIVE' : 'LOCAL' }}</button>
       <button v-if="showBack" class="ah-back-btn" @click="$router.back()">←</button>
       <slot name="actions" />
     </header>
@@ -75,6 +80,7 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { isDev, currentBackend, backendLabel } from '@/config/backend'
 
 const props = defineProps({
   title:    { type: String, default: '' },
@@ -88,6 +94,7 @@ const props = defineProps({
 const router     = useRouter()
 const auth       = useAuthStore()
 const drawerOpen = ref(false)
+const backendMode = isDev ? currentBackend() : null
 const currentTheme = ref(localStorage.getItem('PROD_THEME') || 'navy')
 
 const themes = [
@@ -117,6 +124,7 @@ const menu = computed(() => {
     { title: 'Floor', items: [
       { key: 'home', label: 'Home', icon: '🏠', path: B + '/home', show: true },
       { key: 'my-pick-orders', label: 'My Pick Orders', icon: '✅', path: B + '/my-pick-orders', show: c('Roll Picker') },
+      { key: 'verify-rolls', label: 'Verify Rolls', icon: '🔎', path: B + '/verify-rolls', show: c('Roll Picker') },
       { key: 'chemical-issue', label: 'Chemical Issue', icon: '🧪', path: B + '/chemical-issue', show: c('Chemical Issuer') },
       { key: 'job-cards', label: 'Job Cards', icon: '⚙️', path: B + '/job-cards', show: c('Process Operator') },
       { key: 'manufacture', label: 'Manufacture (MF)', icon: '🏭', path: B + '/manufacture', show: c('Process Operator') },
@@ -128,11 +136,16 @@ const menu = computed(() => {
       { key: 'adopt-rolls', label: 'Adopt Rolls (pre go-live)', icon: '🧷', path: B + '/adopt-rolls', show: c() },
     ].filter(m => m.show) },
     { title: 'Rolls & Reports', items: [
+      { key: 'roll-list', label: 'Rolls', icon: '📋', path: B + '/roll-list', show: true },
       { key: 'rolls', label: 'Roll Trace', icon: '🧶', path: B + '/rolls', show: true },
       { key: 'dashboard', label: 'Dashboard', icon: '📈', path: B + '/dashboard', show: c('Inspection Checker', 'Process Operator') },
       { key: 'lot-report', label: 'Lot Inspection Report', icon: '🧾', path: B + '/lot-report', show: c('Inspection Checker', 'Process Operator') },
       { key: 'pivot', label: 'Pivot Analysis', icon: '🧮', path: B + '/pivot', show: c('Inspection Checker', 'Process Operator') },
     ].filter(m => m.show) },
+    { title: 'App', items: [
+      { key: 'sync-queue', label: 'Offline Queue', icon: '📤', path: B + '/sync-queue', show: true },
+      { key: 'settings', label: 'Settings', icon: '🛠️', path: B + '/settings', show: true },
+    ] },
   ]
 })
 
@@ -188,5 +201,8 @@ async function logout() {
 .ah-header__center { flex:1; min-width:0; }
 .ah-header__title { font-size:17px; font-weight:700; color:white; }
 .ah-header__sub { font-size:11px; color:rgba(255,255,255,0.75); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ah-env { border:1.5px solid rgba(255,255,255,0.6); background:transparent; color:#fff; font-size:11px; font-weight:800; letter-spacing:0.06em; padding:4px 10px; border-radius:999px; cursor:pointer; flex-shrink:0; font-family:inherit; }
+.ah-env--local { background:#047857; border-color:#6ee7b7; }
+.ah-env--live { background:#dc2626; border-color:#fca5a5; }
 .ah-back-btn { background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.2); color:white; width:38px; height:38px; border-radius:8px; cursor:pointer; font-size:18px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 </style>

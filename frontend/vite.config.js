@@ -1,9 +1,22 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { VitePWA } from 'vite-plugin-pwa'
 import path from 'path'
+import { backendProxyPlugin } from './dev-backend-proxy.js'
 
-export default defineConfig(({ command }) => ({
+export default defineConfig(({ command, mode }) => {
+  const env = loadEnv(mode, __dirname, '')
+  // Dev server only: /api, /assets, /files and /private go to the live site or
+  // your local bench, picked per request on the Settings page (see
+  // dev-backend-proxy.js), so switching never needs a restart. A production
+  // build is served by Frappe from the same origin as the API — no proxy, and
+  // __PP_BACKENDS__ is null so the switch doesn't exist there.
+  const LIVE = env.VITE_LIVE_TARGET || 'https://erp.pranera.in'
+  const LOCAL = env.VITE_LOCAL_TARGET || 'http://127.0.0.1:8001'
+  const DEFAULT_BACKEND = env.VITE_DEFAULT_BACKEND === 'live' ? 'live' : 'local'
+  const serving = command === 'serve'
+
+  return {
   base: command === 'serve' ? '/' : '/assets/pranera_production/production_app/',
 
   resolve: {
@@ -11,66 +24,10 @@ export default defineConfig(({ command }) => ({
   },
 
   server: {
-    port: 3000,
-    // Dev-server only — vite build never reads this (production always talks
-    // to erp.pranera.in directly since it's served from that same origin).
-    // Needed so `npm run dev` (localhost:3000) can reach the live backend;
-    // without it every /api/* call 404s against Vite's own dev server and
-    // returns HTML instead of JSON.
-    proxy: command === 'serve' ? {
-      '/api': {
-        target: 'https://erp.pranera.in',
-        changeOrigin: true,
-        secure: false,
-        ws: true,
-        cookieDomainRewrite: 'localhost',
-        headers: {
-          'Origin': 'https://erp.pranera.in',
-          'Referer': 'https://erp.pranera.in'
-        },
-        // Frappe marks its session cookie (sid) as Secure because
-        // erp.pranera.in is HTTPS. Vite's dev server itself is plain HTTP
-        // (localhost:3000), and browsers silently refuse to store *any*
-        // Secure cookie over a non-HTTPS connection — no error, no warning,
-        // it just never lands. cookieDomainRewrite only touches the
-        // Domain= attribute, not Secure, so login would appear to succeed
-        // (the login POST itself returns 200) while the session cookie
-        // that request needed to persist for every call after it never
-        // actually got stored. Strip Secure (dev only) so the cookie sticks.
-        configure(proxy) {
-          // node-http-proxy has a long-standing quirk: for POST/PUT requests
-          // with no body (like our logout call — POST, no payload), it can
-          // forward a stray `Expect` header through to the backend. nginx
-          // (which fronts erp.pranera.in) responds to that with a flat
-          // "417 Expectation Failed" instead of actually processing the
-          // request — so frappe.auth.logout never runs server-side even
-          // though the browser gets back what looks like a real HTTP
-          // response. Stripping the header before it's forwarded is the
-          // standard fix.
-          proxy.on('proxyReq', (proxyReq) => {
-            proxyReq.removeHeader('expect')
-          })
-          proxy.on('proxyRes', (proxyRes) => {
-            const setCookie = proxyRes.headers['set-cookie']
-            if (setCookie) {
-              proxyRes.headers['set-cookie'] = setCookie.map(c =>
-                c.replace(/;\s*Secure/gi, '').replace(/;\s*SameSite=None/gi, '; SameSite=Lax')
-              )
-            }
-          })
-        }
-      },
-      '/assets': {
-        target: 'https://erp.pranera.in',
-        changeOrigin: true,
-        secure: false
-      },
-      '/files': {
-        target: 'https://erp.pranera.in',
-        changeOrigin: true,
-        secure: false
-      }
-    } : undefined
+    // 3002 so it runs beside pranera_knit (3000) and pranera_planning (3001).
+    // Cookies are shared across localhost ports, so one login (and one backend
+    // choice, the pp_backend cookie) covers all three dev apps.
+    port: 3002,
   },
 
   build: {
@@ -79,18 +36,29 @@ export default defineConfig(({ command }) => ({
     rollupOptions: {
       input: path.resolve(__dirname, 'index.html'),
       output: {
-        entryFileNames: 'index.js',
+        // Content-hashed entry (index-<hash>.js). www/production_app.py reads
+        // the built index.html to find it. Never load the entry with a ?v=
+        // query: lazy chunks import the entry by plain URL, and a different URL
+        // makes the browser run a second copy of the app.
+        entryFileNames: 'index-[hash].js',
         chunkFileNames: 'chunks/[name]-[hash].js',
         assetFileNames: (info) => {
-          if (info.name?.endsWith('.css')) return 'index.css'
+          if (info.name?.endsWith('.css')) return 'css/[name]-[hash].css'
           return 'assets/[name]-[hash][extname]'
         }
       }
     }
   },
 
+  define: {
+    __PP_BACKENDS__: serving
+      ? JSON.stringify({ default: DEFAULT_BACKEND, targets: { live: LIVE, local: LOCAL } })
+      : 'null',
+  },
+
   plugins: [
     vue(),
+    ...(serving ? [backendProxyPlugin({ targets: { live: LIVE, local: LOCAL }, defaultBackend: DEFAULT_BACKEND })] : []),
     VitePWA({
       base: '/assets/pranera_production/production_app/',
       registerType: 'autoUpdate',
@@ -107,7 +75,7 @@ export default defineConfig(({ command }) => ({
         // fall back to the cached shell so operators can reload them with no
         // network. The report/dashboard pages are online-only by design and
         // must always hit the server: only the server-rendered /production-app page
-        // (www/production-app.py) injects window.csrf_token, and the cached static
+        // (www/production_app.py) injects window.csrf_token, and the cached static
         // index.html never has it — serving these from cache silently breaks
         // every POST call (call()/ensureCSRF()).
         navigateFallbackDenylist: [
@@ -150,4 +118,5 @@ export default defineConfig(({ command }) => ({
       }
     })
   ]
-}))
+}
+})

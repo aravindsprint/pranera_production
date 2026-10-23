@@ -248,6 +248,15 @@ export const api = {
   pickSubmit:         (pick_order, posting_date, submit_stock_entry = 1) =>
                          call(M + 'pick.submit_pick_order', { pick_order, posting_date, submit_stock_entry }).then(msg),
 
+  // dye chart + additions
+  dyeContext:         (job_card)         => call(M + 'dye.get_dye_chart_context', { job_card }).then(msg),
+  searchRecipes:      (txt, item)        => call(M + 'dye.search_recipes', { txt, item }).then(r => r.message || []),
+  recipeLines:        (recipe)           => call(M + 'dye.get_recipe_lines', { recipe }).then(r => r.message || []),
+  saveDyeChart:       (job_card, lot_weight, lines, dye_receipe, submit = 0) =>
+                         call(M + 'dye.save_dye_chart', { job_card, lot_weight, lines, dye_receipe, submit }).then(msg),
+  dyeBatches:         (item_code, warehouse) => call(M + 'dye.get_batches', { item_code, warehouse }).then(msg),
+  addChemical:        (payload)          => call(M + 'dye.add_chemical', payload).then(msg),
+
   // chemicals
   chemicalJobCards:   (txt)              => call(M + 'chemical.get_chemical_job_cards', { txt }).then(r => r.message || []),
   chemicalContext:    (job_card, source_warehouse) =>
@@ -329,13 +338,13 @@ export const syncSubcontractingOrders = () =>
 // a roll that has been dyed / finished is cut from its CURRENT weight and the
 // new piece inherits its process history.
 export const getPOItems = (purchaseOrder) =>
-  call('knit_get_po_items', { purchase_order: purchaseOrder }).then(r => r.message || [])
+  call('pranera_production.api.knit.get_po_items', { purchase_order: purchaseOrder }).then(r => r.message || [])
 
 export const getSOItems = (subcontractingOrder) =>
-  call('knit_get_so_items', { subcontracting_order: subcontractingOrder }).then(r => r.message || [])
+  call('pranera_production.api.knit.get_so_items', { subcontracting_order: subcontractingOrder }).then(r => r.message || [])
 
 export const createPOSORoll = (payload) =>
-  call('knit_create_po_so_roll', payload).then(r => r.message)
+  call('pranera_production.api.knit.create_po_so_roll', payload).then(r => r.message)
 
 export const cutRoll = (payload) =>
   call(M + 'rolls.cut_roll', payload).then(r => r.message)
@@ -366,3 +375,25 @@ export const getBatchesForItemCode = (itemCode) =>
     limit: 200,
     orderBy: 'creation desc'
   })
+// ── Verify Rolls page ───────────────────────────────────────────────────────
+// Backed by textiles_and_garments/api/verify_rolls.py (Textiles And Garments
+// app). The put-away Stock Entry, its duplicate guard and the Roll.warehouse
+// sync all live there.
+const VR = 'textiles_and_garments.api.verify_rolls'
+
+export const searchMaterialTransfers = (txt) =>
+  call(`${VR}.search_material_transfers`, { txt }).then(r => r.message || [])
+
+// scanned may be the raw 2D-barcode text (name, desk URL, print URL…) —
+// the server works out the Stock Entry name.
+export const getTransferForVerification = (scanned) =>
+  call(`${VR}.get_transfer_for_verification`, { stock_entry: scanned }).then(r => r.message)
+
+export const searchBins = (txt, nearWarehouse, company) =>
+  call(`${VR}.search_bins`, { txt, near_warehouse: nearWarehouse, company }).then(r => r.message || [])
+
+// rolls: [{ roll_no, bin }] — must cover every roll on the transfer.
+export const createVerifiedTransfer = (stockEntry, rolls, postingDate, submit = true) =>
+  call(`${VR}.create_verified_transfer`, {
+    stock_entry: stockEntry, rolls, posting_date: postingDate, submit: submit ? 1 : 0,
+  }).then(r => r.message)

@@ -287,14 +287,18 @@ def create_mf(work_order, rolls, fg_batch=None, posting_date=None, submit_stock_
             row.update({"batch_no": batch_no, "use_serial_batch_fields": 1})
         se.append("items", row)
 
-    # finished good
+    # finished good — batch, in this order: the one the user typed; the batch
+    # an earlier MF of this Work Order made (one lot stays one batch); the
+    # batch_automation rule for this item / process; ERPNext's own series;
+    # else one made here (_new_fg_batch).
     fg_batch = fg_batch or ctx["default_fg_batch"]
-    fg_row = {"t_warehouse": wo.fg_warehouse, "item_code": wo.production_item, "qty": fg_qty,
+    fg_row = se.append("items", {"t_warehouse": wo.fg_warehouse, "item_code": wo.production_item, "qty": fg_qty,
               "transfer_qty": fg_qty, "uom": wo.stock_uom, "stock_uom": wo.stock_uom,
-              "conversion_factor": 1, "is_finished_item": 1, "bom_no": wo.bom_no}
+              "conversion_factor": 1, "is_finished_item": 1, "bom_no": wo.bom_no})
+    if not fg_batch:
+        fg_batch = _batch_from_rules(se, fg_row) or _new_fg_batch(wo)
     if fg_batch:
         fg_row.update({"batch_no": fg_batch, "use_serial_batch_fields": 1})
-    se.append("items", fg_row)
 
     for r in selected:
         insp = r.get("inspection") or {}
@@ -307,9 +311,21 @@ def create_mf(work_order, rolls, fg_batch=None, posting_date=None, submit_stock_
         })
 
     se.flags.ignore_permissions = True
-    se.insert()
-    if cint(submit_stock_entry):
-        se.submit()
+    frappe.db.savepoint("pp_mf")
+    try:
+        se.insert()
+        if cint(submit_stock_entry):
+            se.submit()
+    except frappe.ValidationError as e:
+        # The finished batch was left to ERPNext / batch_automation and neither
+        # made one ("Serial No / Batch No are mandatory for Item <FG>"): make it
+        # here and build the MF again.
+        if fg_batch or "are mandatory for Item" not in str(e) or wo.production_item not in str(e):
+            raise
+        frappe.db.rollback(save_point="pp_mf")
+        frappe.clear_messages()
+        return create_mf(work_order, rolls, fg_batch=_new_fg_batch(wo, force=True),
+                         posting_date=posting_date, submit_stock_entry=submit_stock_entry, remarks=remarks)
     frappe.db.commit()
     fg_batch_after = None
     for it in se.items:
@@ -324,3 +340,66 @@ def create_mf(work_order, rolls, fg_batch=None, posting_date=None, submit_stock_
         "rolls": [{"roll_no": r["roll_no"], "weight": r["weight_after"]} for r in selected],
         "packing_list": frappe.db.get_value("Roll Packing List", {"stock_entry": se.name, "docstatus": 1}, "name"),
     }
+
+
+def _batch_from_rules(se, fg_row):
+    """The finished batch named by the batch_automation app's Batch Naming
+    Rules (item type + process + Work Order / dyeing references), when that
+    app is installed and enabled and a rule matches. Done here, before the
+    entry is saved, so the row carries the batch the way ERPNext needs it
+    (use_serial_batch_fields); batch_automation's own before_submit hook then
+    sees the batch already set and leaves it alone. None if no rule applies."""
+    if "batch_automation" not in frappe.get_installed_apps():
+        return None
+    try:
+        from batch_automation.batch_naming import resolver
+    except ImportError:
+        return None
+    try:
+        resolver.lock_batches(se)
+    except Exception:
+        # a rule problem must not stop the MF — fall back to the app's naming
+        frappe.log_error(frappe.get_traceback(), "Production MF: batch_automation naming failed")
+        frappe.clear_messages()
+        fg_row.batch_no = None
+        return None
+    return fg_row.get("batch_no") or None
+
+
+def _new_fg_batch(wo, force=False):
+    """A batch for the finished item when ERPNext won't make one itself.
+
+    ERPNext auto-creates the finished batch only if the Item has "Automatically
+    Create New Batch" with a Batch Number Series (as DKF… items do). For an
+    item without it the MF fails with "Serial No / Batch No are mandatory".
+    Then create the Batch here: the Item's Batch Number Series if it has one,
+    else Stock Settings' batch naming, else <Work Order>/<n>. Only used when
+    no batch_automation rule named the batch (see _batch_from_rules)."""
+    item = frappe.db.get_value("Item", wo.production_item,
+                               ["has_batch_no", "create_new_batch", "batch_number_series"], as_dict=True)
+    if not item or not cint(item.has_batch_no):
+        return None
+    if not force and cint(item.create_new_batch) and item.batch_number_series:
+        return None  # ERPNext names it
+    from frappe.model.naming import make_autoname
+    batch = frappe.new_doc("Batch")
+    batch.item = wo.production_item
+    batch.reference_doctype = "Work Order"
+    batch.reference_name = wo.name
+    # Batch ID is mandatory for an item without "Automatically Create New Batch"
+    if item.batch_number_series:
+        series = item.batch_number_series
+    elif cint(frappe.db.get_single_value("Stock Settings", "use_naming_series")):
+        series = (frappe.db.get_single_value("Stock Settings", "naming_series_prefix") or "BATCH-") + ".#####"
+    else:
+        series = None
+    n = frappe.db.count("Batch", {"batch_id": ["like", f"{wo.name}/%"]})
+    while not batch.batch_id or frappe.db.exists("Batch", batch.batch_id):
+        if series:
+            batch.batch_id = make_autoname(series, "Batch")
+        else:
+            n += 1
+            batch.batch_id = f"{wo.name}/{n}"
+    batch.flags.ignore_permissions = True
+    batch.insert()
+    return batch.name

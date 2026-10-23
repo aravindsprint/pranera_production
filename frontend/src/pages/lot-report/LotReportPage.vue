@@ -205,7 +205,8 @@ table { border-collapse: collapse; font-size: 11px; }
 .grid .b { font-weight: 700; }
 .grid .tot td { font-weight: 800; color: #202124; background: #f8fafc; }
 .grid .g3 { background: #E2116F; color: #000; font-weight: 800; }
-.summary { max-width: 760px; margin: 0 auto; }
+.summary { width: 100%; table-layout: fixed; }
+.summary th { white-space: normal; line-height: 1.15; }
 .sign { display: flex; justify-content: space-between; margin-top: 40px; font-size: 11px; font-weight: 700; padding: 0 40px; }
 
 @media print {

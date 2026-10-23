@@ -47,7 +47,15 @@
         <div class="card">
           <div class="section-title">Lot batches available (not in process)</div>
           <div v-if="!ctx.available_batches.length" class="hint">No rolls of the required items found.</div>
-          <div class="batch" v-for="b in ctx.available_batches" :key="b.batch + b.warehouse">
+          <template v-else>
+            <input v-model="batchSearch" type="search" class="form-input batch-search" placeholder="Search batch, item or warehouse" />
+            <div class="hint batch-count">
+              {{ filteredBatches.length }} of {{ ctx.available_batches.length }} batches
+              <span v-if="batchRows.length"> · {{ batchRows.length }} ticked</span>
+            </div>
+            <div v-if="!filteredBatches.length" class="hint">No batch matches “{{ batchSearch }}”.</div>
+          </template>
+          <div class="batch" v-for="b in filteredBatches" :key="b.batch + b.warehouse">
             <label class="batch__chk">
               <input type="checkbox" :checked="!!selected[b.batch]" @change="toggleBatch(b, $event.target.checked)" />
               <div>
@@ -121,6 +129,7 @@ async function onWorkOrder(o) {
   error.value = ''
   done.value = ''
   Object.keys(selected).forEach(k => delete selected[k])
+  batchSearch.value = ''
   if (!o) return
   loading.value = true
   try {
@@ -144,6 +153,19 @@ function toggleBatch(b, on) {
 }
 
 const batchRows = computed(() => Object.values(selected))
+const batchSearch = ref('')
+// Every word must match the batch, item or warehouse. Ticked batches always stay
+// visible so a selection can't be hidden by the filter.
+const filteredBatches = computed(() => {
+  const all = ctx.value?.available_batches || []
+  const words = batchSearch.value.toLowerCase().split(/\s+/).filter(Boolean)
+  if (!words.length) return all
+  return all.filter(b => {
+    if (selected[b.batch]) return true
+    const hay = `${b.batch || ''} ${b.item_code || ''} ${b.warehouse || ''}`.toLowerCase()
+    return words.every(w => hay.includes(w))
+  })
+})
 const batchTotal = computed(() => batchRows.value.reduce((s, r) => s + (Number(r.qty) || 0), 0))
 const canSubmit = computed(() => ctx.value && jobCard.value && sourceWarehouse.value && assignedTo.value &&
   (batchRows.value.length ? batchTotal.value > 0 : Number(pickQty.value) > 0))
@@ -184,6 +206,8 @@ async function submit() {
 .req { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--slate-100); font-size: 13px; }
 .req__item { overflow-wrap: anywhere; }
 .req__qty { white-space: nowrap; font-weight: 600; }
+.batch-search { margin: 4px 0 6px; }
+.batch-count { margin: 0 0 4px; }
 .batch { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--slate-100); }
 .batch__chk { display: flex; gap: 10px; flex: 1; min-width: 0; align-items: flex-start; }
 .batch__chk input { margin-top: 4px; width: 18px; height: 18px; }

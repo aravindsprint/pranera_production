@@ -14,5 +14,11 @@ db.version(1).stores({
   syncQueue: '++id, method, _status, _retries, _createdAt',
 })
 
+// v2: queue items carry a group (e.g. 'jc:PO-JOB00076') — items of a group
+// are sent strictly in order, and a stuck one holds back the rest.
+db.version(2).stores({
+  syncQueue: '++id, method, group, _status, _retries, _createdAt',
+})
+
 // _status values: 'pending' | 'syncing' | 'synced' | 'failed'
 export default db

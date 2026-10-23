@@ -85,35 +85,23 @@
           <div class="sub" style="text-align:center">{{ result.fg_item }} · {{ result.fg_batch || 'batch on submit' }} · {{ fmt(result.fg_qty, 3) }}</div>
           <div class="sub" style="text-align:center" v-if="result.packing_list">Roll Packing List {{ result.packing_list }}</div>
           <div class="btn-row">
-            <button class="btn btn-outline" :disabled="!result.fg_batch" @click="printStickers">🖨 Stickers</button>
+            <button class="btn btn-outline" :disabled="!result.submitted" @click="printStickers">🖨 Stickers</button>
             <button class="btn btn-primary" @click="finish">Done</button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Print area: one sticker per roll -->
-    <div class="print-only">
-      <div v-for="s in stickers" :key="s.roll_no" class="sticker">
-        <img :src="s.qr" class="sticker__qr" />
-        <div class="sticker__txt">
-          <div class="sticker__roll">{{ s.roll_no }}</div>
-          <div>{{ s.item }}</div>
-          <div>{{ s.batch }}</div>
-          <div><b>{{ fmt(s.weight, 2) }} kg</b><span v-if="s.grade"> · G{{ s.grade }}</span></div>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import QRCode from 'qrcode'
 import AppHeader from '@/components/AppHeader.vue'
 import ScannerModal from '@/components/ScannerModal.vue'
 import { api } from '@/api/frappe'
+import { printRollStickers } from '@/lib/rollSticker'
 import { BASE, fmt, today, statusClass, gradeClass, isPcs } from '@/utils'
 
 const route = useRoute()
@@ -132,7 +120,6 @@ const result = ref(null)
 const scannerOpen = ref(false)
 const scanMsg = ref('')
 const scanOk = ref(false)
-const stickers = ref([])
 let t = null
 
 async function list() {
@@ -201,18 +188,7 @@ async function submit(final) {
 }
 
 async function printStickers() {
-  const byRoll = Object.fromEntries(ctx.value.rolls.map(r => [r.roll_no, r]))
-  stickers.value = await Promise.all(result.value.rolls.map(async (r) => ({
-    roll_no: r.roll_no,
-    item: result.value.fg_item,
-    batch: result.value.fg_batch,
-    weight: r.weight,
-    grade: byRoll[r.roll_no]?.inspection?.grade,
-    // same sticker format the knit app scans: item_code#batch#roll_no
-    qr: await QRCode.toDataURL(`${result.value.fg_item}#${result.value.fg_batch}#${r.roll_no}`, { margin: 1, width: 180 }),
-  })))
-  await nextTick()
-  window.print()
+  try { await printRollStickers({ stock_entry: result.value.stock_entry }) } catch (e) { error.value = e.message }
 }
 
 async function finish() {
@@ -256,12 +232,4 @@ onMounted(async () => {
 .ov { position: fixed; inset: 0; background: rgba(15,23,42,0.55); display: flex; align-items: center; justify-content: center; z-index: 500; padding: 20px; }
 .ov__box { background: #fff; border-radius: 14px; padding: 22px; width: 100%; max-width: 380px; }
 .done-icon { font-size: 40px; text-align: center; }
-.print-only { display: none; }
-@media print {
-  .no-print, :deep(.ah-header) { display: none !important; }
-  .print-only { display: block; }
-  .sticker { display: flex; gap: 8px; align-items: center; width: 100mm; height: 50mm; padding: 3mm; page-break-after: always; font-size: 11pt; }
-  .sticker__qr { width: 40mm; height: 40mm; }
-  .sticker__roll { font-size: 20pt; font-weight: 800; }
-}
 </style>

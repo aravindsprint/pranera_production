@@ -214,3 +214,39 @@ def cut_roll(source_roll, qty, roll_weight=None, avg_weight_per_pcs=None,
             frappe.db.set_value("Roll", source_roll, "roll_weight", remaining)
     frappe.db.commit()
     return {"name": new.name, "roll_no": new.roll_no, "remaining_qty": remaining, "source_roll": source_roll}
+
+
+@frappe.whitelist()
+def get_sticker_data(rolls=None, stock_entry=None):
+    """What goes on a roll sticker, from the roll's CURRENT state — so a roll
+    that has been dyed / finished prints its new item and batch, not the
+    greige ones. Either a list of rolls, or every roll of a production MF
+    (or any Stock Entry with a custom_production_rolls table)."""
+    names = frappe.parse_json(rolls) if isinstance(rolls, str) else (rolls or [])
+    if stock_entry:
+        names = frappe.get_all("Production Stock Entry Roll",
+                               filters={"parent": stock_entry, "parenttype": "Stock Entry"},
+                               pluck="roll_no", order_by="idx asc")
+    if not names:
+        frappe.throw(_("No rolls to print"))
+    out = []
+    for name in names:
+        r = get_roll(name, throw=False)
+        if not r:
+            continue
+        wo = r.get("current_work_order") or r.get("work_order")
+        item = r.eff_item
+        out.append({
+            "roll_no": r.name,
+            "item_code": item,
+            "commercial_name": frappe.db.get_value("Item", item, "commercial_name")
+                if frappe.get_meta("Item").has_field("commercial_name") else "",
+            "work_order": wo or "",
+            "batch": r.eff_batch or "",
+            "weight": r.eff_weight,
+            "qty": cint(r.get("total_qty")) or None,
+            "mistake_qty": cint(frappe.db.get_value("Roll", r.name, "mistake_qty")) or None
+                if frappe.get_meta("Roll").has_field("mistake_qty") else None,
+            "grade": r.get("current_grade") or "",
+        })
+    return out

@@ -10,6 +10,7 @@
   "dependencies": {
     "@vueuse/core": "^10.7.0",
     "axios": "^1.6.0",
+    "http-proxy": "^1.18.1",
     "dexie": "^3.2.0",
     "html5-qrcode": "^2.3.8",
     "moment": "^2.29.4",

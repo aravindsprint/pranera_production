@@ -1,0 +1,138 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-16 14:30:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "addition_no",
+  "posting_datetime",
+  "bath_no",
+  "chemicals",
+  "item",
+  "item_name",
+  "col1",
+  "qty",
+  "stock_uom",
+  "batches",
+  "stock_entry",
+  "added_by",
+  "remarks",
+  "client_id"
+ ],
+ "fields": [
+  {
+   "fieldname": "addition_no",
+   "fieldtype": "Int",
+   "label": "No.",
+   "in_list_view": 1,
+   "columns": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "posting_datetime",
+   "fieldtype": "Datetime",
+   "label": "Added At",
+   "in_list_view": 1,
+   "columns": 2,
+   "read_only": 1
+  },
+  {
+   "fieldname": "bath_no",
+   "fieldtype": "Data",
+   "label": "Bath",
+   "in_list_view": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "chemicals",
+   "fieldtype": "Data",
+   "label": "Function"
+  },
+  {
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "label": "Chemical",
+   "options": "Item",
+   "in_list_view": 1,
+   "columns": 2,
+   "reqd": 1
+  },
+  {
+   "fieldname": "item_name",
+   "fieldtype": "Data",
+   "label": "Item Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "col1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "qty",
+   "fieldtype": "Float",
+   "label": "Qty",
+   "in_list_view": 1,
+   "columns": 1,
+   "precision": "3"
+  },
+  {
+   "fieldname": "stock_uom",
+   "fieldtype": "Data",
+   "label": "UOM",
+   "read_only": 1
+  },
+  {
+   "fieldname": "batches",
+   "fieldtype": "Small Text",
+   "label": "Batches",
+   "read_only": 1
+  },
+  {
+   "fieldname": "stock_entry",
+   "fieldtype": "Link",
+   "label": "Stock Entry",
+   "options": "Stock Entry",
+   "in_list_view": 1,
+   "columns": 2,
+   "read_only": 1
+  },
+  {
+   "fieldname": "added_by",
+   "fieldtype": "Link",
+   "label": "Added By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "client_id",
+   "fieldtype": "Data",
+   "label": "Client ID",
+   "read_only": 1,
+   "hidden": 1,
+   "no_copy": 1,
+   "description": "Set by the app for additions made offline, so a re-sent one is recognised"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "is_submittable": 0,
+ "issingle": 0,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-10-17 13:10:00.000000",
+ "modified_by": "Administrator",
+ "module": "Production Module",
+ "name": "Dye Chart Addition",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}

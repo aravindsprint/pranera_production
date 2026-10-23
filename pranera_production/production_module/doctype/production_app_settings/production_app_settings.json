@@ -7,10 +7,13 @@
  "field_order": [
   "naming_section",
   "mtm_naming_series",
+  "transit_naming_series",
   "mf_naming_series",
   "col_naming",
   "pick_tolerance_pct",
   "chemical_store_warehouse",
+  "chemical_stores_section",
+  "chemical_stores",
   "process_section",
   "keep_weight_operations",
   "col_process",
@@ -35,6 +38,13 @@
    "label": "Material Transfer for Manufacture Series"
   },
   {
+   "fieldname": "transit_naming_series",
+   "fieldtype": "Data",
+   "label": "In Transit MTM Naming Series",
+   "default": "MT/26/",
+   "description": "Used instead of the MTM series when a pick order (To Work Order) sends rolls to a warehouse whose name starts with \"In Transit\". Must exist in Stock Entry's naming series."
+  },
+  {
    "default": "MF/26/",
    "fieldname": "mf_naming_series",
    "fieldtype": "Data",
@@ -54,7 +64,20 @@
    "fieldname": "chemical_store_warehouse",
    "fieldtype": "Link",
    "label": "Default Chemical Store Warehouse",
-   "options": "Warehouse"
+   "options": "Warehouse",
+   "description": "Used when a Job Card's unit has no row in Chemical Store by Unit"
+  },
+  {
+   "fieldname": "chemical_stores_section",
+   "fieldtype": "Section Break",
+   "label": "Chemical Store by Unit",
+   "description": "Each dyeing unit issues chemicals from its own store. The unit is found from the Work Order's WIP warehouse."
+  },
+  {
+   "fieldname": "chemical_stores",
+   "fieldtype": "Table",
+   "options": "Production Chemical Store",
+   "label": "Chemical Stores"
   },
   {
    "fieldname": "process_section",
@@ -73,7 +96,6 @@
    "fieldtype": "Column Break"
   },
   {
-   "default": "INSPECTION",
    "fieldname": "inspection_operation",
    "fieldtype": "Link",
    "label": "Inspection Operation",
@@ -112,7 +134,7 @@
  "issingle": 1,
  "istable": 0,
  "links": [],
- "modified": "2026-10-14 21:00:00.000000",
+ "modified": "2026-10-16 18:30:00.000000",
  "modified_by": "Administrator",
  "module": "Production Module",
  "name": "Production App Settings",

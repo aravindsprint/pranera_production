@@ -7,13 +7,19 @@
       <template v-if="!ctx">
         <input v-model="txt" class="form-input" placeholder="Search job card / work order / item" @input="debouncedList" style="margin-bottom:12px" />
         <div v-if="listLoading" class="loading-center"><div class="spinner"></div></div>
-        <div v-else-if="!jobCards.length" class="empty-state"><div class="empty-state__icon">🧪</div><div class="empty-state__title">No open job cards with a Dye Chart</div></div>
-        <button v-for="j in jobCards" :key="j.name" class="card jc" @click="openJc(j.name)">
+        <div v-else-if="!jobCards.length" class="empty-state"><div class="empty-state__icon">🧪</div><div class="empty-state__title">No open job cards</div></div>
+        <div v-for="j in jobCards" :key="j.name" class="card jc" :class="{ 'jc--none': !j.dye_chart }"
+             :title="j.dye_chart ? '' : 'Create a Dye Chart for this Job Card first'"
+             @click="j.dye_chart && openJc(j.name)">
           <div class="jc__top"><b>{{ j.name }}</b><span class="badge" :class="statusClass(j.status)">{{ j.status }}</span></div>
           <div class="jc__meta">{{ j.operation }} · {{ j.workstation }}</div>
           <div class="jc__meta">{{ j.work_order }} · {{ j.production_item }}</div>
-          <div class="jc__meta">Dye Chart {{ j.dye_chart }} · {{ fmt(j.for_quantity) }} kg</div>
-        </button>
+          <div v-if="j.dye_chart" class="jc__meta">Dye Chart {{ j.dye_chart }} · {{ fmt(j.for_quantity) }} kg</div>
+          <div v-else class="jc__meta jc__none">No Dye Chart yet · {{ fmt(j.for_quantity) }} kg
+            <button v-if="auth.can('Process Operator', 'Chemical Issuer')" class="btn btn-ghost mk"
+                    @click.stop="router.push(BASE + '/dye-chart/' + encodeURIComponent(j.name))">Create Dye Chart →</button>
+          </div>
+        </div>
       </template>
 
       <!-- Issue screen -->
@@ -49,6 +55,8 @@
               <input v-model.number="qty[it.item_code]" type="number" step="0.001" min="0" class="form-input" :placeholder="'0.000 ' + (it.stock_uom || '')" />
               <button class="btn btn-ghost" @click="qty[it.item_code] = it.pending_qty">Pending</button>
             </div>
+            <BatchAllocator v-if="Number(qty[it.item_code]) > 0 && store" :item-code="it.item_code" :warehouse="store"
+                            :qty="Number(qty[it.item_code]) || 0" @update:allocations="a => (alloc[it.item_code] = a)" />
           </div>
           <label class="form-label" style="margin-top:12px">Posting Date</label>
           <input v-model="postingDate" type="date" class="form-input" />
@@ -76,6 +84,9 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import AppHeader from '@/components/AppHeader.vue'
 import AsyncSelect from '@/components/AsyncSelect.vue'
+import BatchAllocator from '@/components/BatchAllocator.vue'
+import { useRoute, useRouter } from 'vue-router'
+import { BASE } from '@/utils'
 import { useAuthStore } from '@/stores/auth'
 import { api } from '@/api/frappe'
 import { fmt, today, statusClass, warehouseFetcher } from '@/utils'
@@ -85,8 +96,11 @@ const txt = ref('')
 const jobCards = ref([])
 const listLoading = ref(false)
 const ctx = ref(null)
-const store = ref(localStorage.getItem('PROD_CHEM_STORE') || '')
+const store = ref('')
 const qty = reactive({})
+const alloc = reactive({})
+const route = useRoute()
+const router = useRouter()
 const postingDate = ref(today())
 const saving = ref(false)
 const error = ref('')
@@ -103,14 +117,13 @@ function debouncedList() { clearTimeout(t); t = setTimeout(list, 300) }
 async function openJc(name) {
   error.value = ''
   done.value = ''
-  if (!store.value) store.value = auth.settings.chemical_store_warehouse || ''
-  ctx.value = await api.chemicalContext(name, store.value || undefined)
-  if (!store.value) store.value = ctx.value.source_warehouse || ''
+  // each Job Card starts from its own unit's store (Production App Settings)
+  ctx.value = await api.chemicalContext(name)
+  store.value = ctx.value.source_warehouse || ''
   Object.keys(qty).forEach(k => delete qty[k])
 }
 async function reload() {
   if (!ctx.value) return
-  localStorage.setItem('PROD_CHEM_STORE', store.value || '')
   ctx.value = await api.chemicalContext(ctx.value.job_card.name, store.value || undefined)
 }
 
@@ -121,10 +134,11 @@ async function issue(final) {
   error.value = ''
   done.value = ''
   try {
-    const items = Object.entries(qty).filter(([, v]) => Number(v) > 0).map(([item_code, v]) => ({ item_code, qty: v }))
+    const items = Object.entries(qty).filter(([, v]) => Number(v) > 0).map(([item_code, v]) => ({ item_code, qty: v, allocations: alloc[item_code] || [] }))
     const r = await api.issueChemicals(ctx.value.job_card.name, store.value, items, postingDate.value, final ? 1 : 0)
     done.value = `${r.stock_entry} ${r.submitted ? 'submitted' : 'saved as draft'}`
     Object.keys(qty).forEach(k => delete qty[k])
+    Object.keys(alloc).forEach(k => delete alloc[k])
     await reload()
   } catch (err) {
     error.value = err.message
@@ -133,11 +147,18 @@ async function issue(final) {
   }
 }
 
-onMounted(list)
+onMounted(async () => {
+  await list()
+  if (route.query.jc) openJc(String(route.query.jc)).catch(err => { error.value = err.message })
+})
 </script>
 
 <style scoped>
-.jc { display: block; width: 100%; text-align: left; }
+.jc--none { cursor: default; }
+.jc--none > *:not(.jc__none) { opacity: 0.55; }
+.mk { padding: 2px 8px; font-size: 12px; margin-left: 6px; }
+.jc__none { font-weight: 700; color: var(--amber-600); }
+.jc { display: block; width: 100%; text-align: left; cursor: pointer; }
 .jc__top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .jc__meta { font-size: 12px; color: var(--slate-500); margin-top: 3px; overflow-wrap: anywhere; }
 .h { font-weight: 800; }

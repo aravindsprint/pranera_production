@@ -17,13 +17,28 @@ bench --site pranera.com migrate
 Same rule as pranera_knit: `bench build` does **not** run Vite. Run `yarn build` in
 `frontend/` before every commit. `public/production_app` is committed.
 
-For `yarn dev`, the Vite proxy points at erp.pranera.in. Point it at
-`http://127.0.0.1:8001` while the new APIs exist only on the local bench, and revert it
-before you commit.
+### Dev server (`yarn dev`, http://localhost:3002/production-app)
+
+The dev server can talk to **erp.pranera.in** or your **local bench** (`http://127.0.0.1:8001`).
+Pick one on **Settings** (menu → App → Settings) or on the login page. Switching takes effect
+immediately (no restart): it signs you out, clears the app's cached data and opens the login page.
+A **LOCAL** / **LIVE** badge in the header shows which one you're on. It defaults to Local bench.
+The choice is the `pp_backend` cookie, shared with the Planning dev app (3001), since both apps
+share the same localhost login.
+
+Override the targets in `frontend/.env.local` if needed:
+`VITE_LOCAL_TARGET=http://127.0.0.1:8001`, `VITE_LIVE_TARGET=https://erp.pranera.in`,
+`VITE_DEFAULT_BACKEND=live`. None of this is in the production build.
+
+Settings also checks the connected site: reachable, app version, your roles, and every
+database field the app reads. A local bench restored from an older backup can be missing
+fields that exist on erp.pranera.in (e.g. `Job Card.color`), and pages then fail with
+"Unknown column …". `bench migrate` creates any missing field (`schema.ensure_fields`, never
+changes existing ones).
 
 ## 2. What migrate changes on the site
 
-* **Custom Fields** (module *Production Module*) on **Roll** (`current_*` + history
+* **Custom Fields** (module *Production Module*, created by `schema.ensure_fields` from `setup_data/custom_fields.json`, not fixtures) on **Roll** (`current_*` + history
   table), **Roll Tracking Entries** (event, WO, JC, weight before/after, loss),
   **Stock Entry** (`custom_production_entry_type`, `custom_dye_chart`,
   `custom_production_rolls`), **Roll Pick Assignment** (`custom_job_card`) and

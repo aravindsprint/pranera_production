@@ -175,7 +175,11 @@
               placeholder="Select Item"
               @change="onOrderItemChange"
             />
+            <div class="cro-hint" v-if="order.itemsLoaded && !order.items.length && !order.error">
+              This {{ tab === 'po' ? 'Purchase Order' : 'Subcontracting Order' }} has no items.
+            </div>
           </div>
+          <div class="alert alert-error" v-if="order.error && !order.item">⚠ {{ order.error }}</div>
         </div>
 
         <div class="card" v-if="order.item">
@@ -486,11 +490,14 @@ async function onOrderChange(val) {
   order.itemCode = ''
   order.item = null
   order.items = []
+  order.itemsLoaded = false
+  order.error = ''
   order.batch = ''
   batchOptions.value = []
   if (!val) return
   try {
     order.items = tab.value === 'po' ? await getPOItems(val) : await getSOItems(val)
+    order.itemsLoaded = true
   } catch (e) {
     order.error = e.message || 'Failed to load items for this order'
   }

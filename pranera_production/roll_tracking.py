@@ -31,6 +31,7 @@ ENTRY_MF = "Production MF"
 EV_ISSUED = "Issued To Process"
 EV_PROCESS_DONE = "Process Completed"
 EV_MANUFACTURED = "Manufactured"
+EV_TRANSFERRED = "Transferred"
 
 ST_IN_PROCESS = "In Process"
 ST_IN_STOCK = "In Stock"
@@ -91,12 +92,16 @@ def on_stock_entry_submit(doc, method=None):
     if not entry_type or not doc.get("custom_production_rolls"):
         return
     if entry_type == ENTRY_ROLL_PICK:
+        from pranera_production.api.pick import set_transferred_lot_qty
+        set_transferred_lot_qty(doc)
         _issue_rolls_to_process(doc)
     elif entry_type == ENTRY_MF:
         _manufacture_rolls(doc)
 
 
 def _issue_rolls_to_process(doc):
+    if doc.purpose == "Material Transfer":
+        return _transfer_rolls(doc)
     job_card = doc.get("job_card")
     operation = frappe.db.get_value("Job Card", job_card, "operation") if job_card else None
     # source / target warehouse per (item, batch) from the actual SE rows
@@ -120,6 +125,35 @@ def _issue_rolls_to_process(doc):
             custom_roll_status=ST_IN_PROCESS,
             document_type="Stock Entry", document_name=doc.name,
             remarks=_("Issued to {0} ({1})").format(operation or "process", job_card or doc.work_order),
+        )
+        recompute_current(roll_doc)
+        save_roll(roll_doc)
+
+
+def _transfer_rolls(doc):
+    """MT (pick to an In Transit warehouse): the rolls just change warehouse.
+    They stay In Stock, not tied to a Work Order, and are picked again (MTM)
+    from the transit warehouse when they reach the WIP."""
+    wh = {}
+    for it in doc.items:
+        wh[(it.item_code, get_row_batch(it))] = (it.s_warehouse, it.t_warehouse)
+    ref_wo = doc.get("work_order") or doc.get("custom_reference_dyeing_work_order")
+    for r in doc.custom_production_rolls:
+        roll_doc = frappe.get_doc("Roll", r.roll_no)
+        s_wh, t_wh = wh.get((r.item_code, r.batch_no)) or (doc.from_warehouse, doc.to_warehouse)
+        add_history(
+            roll_doc,
+            custom_event=EV_TRANSFERRED,
+            operation=roll_doc.get("current_process"),
+            source_item=r.item_code, target_item=r.item_code,
+            source_batch=r.batch_no, target_batch=r.batch_no,
+            source_warehouse=s_wh, target_warehouse=t_wh,
+            qty=r.weight_before,
+            custom_weight_before=r.weight_before, custom_weight_after=r.weight_before,
+            custom_process_loss=0,
+            custom_roll_status=ST_IN_STOCK,
+            document_type="Stock Entry", document_name=doc.name,
+            remarks=_("Transferred to {0}").format(t_wh) + (_(" for {0}").format(ref_wo) if ref_wo else ""),
         )
         recompute_current(roll_doc)
         save_roll(roll_doc)
@@ -205,6 +239,9 @@ def on_stock_entry_before_cancel(doc, method=None):
 
 
 def on_stock_entry_cancel(doc, method=None):
+    if doc.get("custom_production_entry_type") == ENTRY_CHEMICAL and doc.get("custom_dye_chart"):
+        from pranera_production.api.dye import remove_additions_for
+        remove_additions_for(doc.name)
     if not doc.get("custom_production_entry_type") or not doc.get("custom_production_rolls"):
         return
     for r in doc.custom_production_rolls:
@@ -212,6 +249,27 @@ def on_stock_entry_cancel(doc, method=None):
 
 
 # ── Job Card (multi-operation Work Orders) ───────────────────────────────────
+
+def on_job_card_validate(doc, method=None):
+    """Work Orders that transfer material against the Work Order (the pick MTM)
+    never fill a Job Card's Transferred Qty: ERPNext leaves it at 0 because
+    such Job Cards normally have no item rows. The Dye Chart adds its chemicals
+    as Job Card items, and with items ERPNext refuses to start or submit the
+    Job Card until Transferred Qty reaches For Quantity ("Materials needs to be
+    transferred to the work in progress warehouse"). Mirror the Work Order's
+    transferred qty onto the Job Card instead."""
+    if not doc.work_order or not doc.get("items"):
+        return
+    wo = frappe.db.get_value("Work Order", doc.work_order,
+                             ["transfer_material_against", "skip_transfer",
+                              "material_transferred_for_manufacturing"], as_dict=True)
+    if not wo or (wo.transfer_material_against == "Job Card" and not wo.skip_transfer):
+        return
+    qty = flt(doc.for_quantity) if wo.skip_transfer else \
+        min(flt(doc.for_quantity), flt(wo.material_transferred_for_manufacturing))
+    if flt(doc.transferred_qty) != qty:
+        doc.transferred_qty = qty
+
 
 def on_job_card_submit(doc, method=None):
     rolls = frappe.get_all(

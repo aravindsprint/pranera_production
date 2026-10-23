@@ -5,6 +5,8 @@
       <div v-if="loading" class="loading-center"><div class="spinner"></div></div>
       <div v-else-if="error" class="alert alert-error">{{ error }}</div>
       <template v-if="d">
+        <div v-if="offlineAt" class="alert alert-warning">Offline — showing this Job Card as of {{ new Date(offlineAt).toLocaleString() }}.</div>
+        <div v-if="pendingMsg" class="alert alert-info">{{ pendingMsg }}</div>
         <div class="card">
           <div class="row-top">
             <b>{{ d.job_card.workstation }}</b>
@@ -14,7 +16,7 @@
           <div class="sub">{{ d.work_order.item_name }}</div>
           <div class="nums">
             <span>For <b>{{ fmt(d.job_card.for_quantity) }}</b></span>
-            <span>Transferred <b>{{ fmt(d.job_card.transferred_qty) }}</b></span>
+            <span>Transferred <b>{{ fmt(Math.max(d.job_card.transferred_qty || 0, d.work_order.material_transferred_for_manufacturing || 0)) }}</b></span>
             <span>Completed <b>{{ fmt(d.job_card.total_completed_qty) }}</b></span>
           </div>
           <div v-if="d.job_card.running_since" class="alert alert-info" style="margin-top:10px">Running since {{ d.job_card.running_since }}</div>
@@ -31,7 +33,7 @@
           </div>
         </div>
 
-        <div class="card" v-if="d.job_card.docstatus === 0">
+        <div class="card" v-if="d.job_card.docstatus === 0 && !d.job_card.pending_end">
           <div class="btn-row">
             <button class="btn btn-outline" :disabled="busy || !!d.job_card.running_since" @click="start">▶ Start</button>
             <button class="btn btn-primary" :disabled="busy" @click="showComplete = true">✔ Complete</button>
@@ -40,6 +42,11 @@
           <div class="hint" v-else>Last operation — after completing, go to Manufacture (MF).</div>
           <div v-if="actionError" class="alert alert-error" style="margin-top:10px">{{ actionError }}</div>
         </div>
+        <button v-if="!d.job_card.is_inspection && (d.job_card.dye_chart || /dye/i.test(d.job_card.operation || ''))"
+                class="btn btn-primary btn-full btn-lg" style="margin-bottom:12px"
+                @click="router.push(BASE + '/dye-chart/' + encodeURIComponent(jobCard))">
+          🧪 {{ d.job_card.dye_chart ? 'Dye Chart & additions' : 'Create Dye Chart' }}
+        </button>
         <button v-if="d.job_card.is_inspection" class="btn btn-primary btn-full btn-lg" style="margin-bottom:12px"
                 @click="router.push(BASE + '/inspection/' + encodeURIComponent(jobCard))">🔍 Open Inspection</button>
         <button v-if="d.job_card.is_last_operation && d.rolls.length" class="btn btn-outline btn-full" style="margin-bottom:12px"
@@ -58,8 +65,11 @@
 
         <div class="card" v-if="d.issues.length">
           <div class="section-title">Material issued (MTM)</div>
-          <div class="iss" v-for="(s, i) in d.issues" :key="i">
-            <span class="iss__se">{{ s.name }}</span>
+          <div v-if="d.issues.some(s => s.docstatus === 0)" class="alert alert-warning" style="margin-bottom:8px">
+            Draft entries don't count as transferred until they are submitted (open them in the desk → Submit).
+          </div>
+          <div class="iss" v-for="(s, i) in d.issues" :key="i" :class="{ 'iss--draft': s.docstatus === 0 }">
+            <span class="iss__se">{{ s.name }} <span v-if="s.docstatus === 0" class="badge badge-warning">Draft</span></span>
             <span class="iss__it">{{ s.item_code }}</span>
             <span class="iss__q">{{ fmt(s.qty, 3) }} {{ s.uom }}</span>
           </div>
@@ -69,7 +79,9 @@
           <div class="section-title">Manufacture entries (Work Order)</div>
           <div class="iss" v-for="m in d.manufactures" :key="m.name">
             <span class="iss__se">{{ m.name }}</span><span>{{ m.posting_date }}</span><span class="iss__q">{{ fmt(m.fg_completed_qty) }}</span>
+            <button v-if="m.docstatus === 1" class="btn btn-ghost stk" title="Print roll stickers" @click="stickers(m.name)">🖨</button>
           </div>
+          <div v-if="stickerError" class="alert alert-error" style="margin-top:8px">{{ stickerError }}</div>
         </div>
       </template>
 
@@ -90,10 +102,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import { api } from '@/api/frappe'
+import { printRollStickers } from '@/lib/rollSticker'
+import { cached, startJobCard, completeJobCard, applyJobCardOverlay } from '@/composables/useOffline'
 import { BASE, fmt, statusClass, gradeClass } from '@/utils'
 
 const props = defineProps({ jobCard: String })
@@ -105,6 +119,13 @@ const busy = ref(false)
 const actionError = ref('')
 const showComplete = ref(false)
 const completedQty = ref(null)
+const offlineAt = ref(null)
+const pendingMsg = ref('')
+const stickerError = ref('')
+async function stickers(se) {
+  stickerError.value = ''
+  try { await printRollStickers({ stock_entry: se }) } catch (e) { stickerError.value = e.message }
+}
 
 const rollWeight = computed(() => (d.value?.rolls || []).reduce((s, r) => s + (Number(r.current_weight) || 0), 0))
 
@@ -112,7 +133,13 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    d.value = await api.jobCardDetail(props.jobCard)
+    const r = await cached('jc:' + props.jobCard, () => api.jobCardDetail(props.jobCard))
+    d.value = r.data
+    offlineAt.value = r.offline ? r.at : null
+    const ovl = await applyJobCardOverlay(props.jobCard, d.value.job_card)
+    pendingMsg.value = !ovl ? '' : ovl.ended_at
+      ? `Ended at ${ovl.ended_at} on this device — waiting to sync to ERPNext.`
+      : `Started at ${ovl.running_since} on this device — waiting to sync to ERPNext.`
     const done = (d.value.job_card.total_completed_qty || 0)
     completedQty.value = Number(Math.max(0, (d.value.job_card.for_quantity || 0) - done).toFixed(3))
   } catch (err) {
@@ -124,14 +151,14 @@ async function load() {
 async function start() {
   busy.value = true
   actionError.value = ''
-  try { await api.startJobCard(props.jobCard); await load() } catch (err) { actionError.value = err.message }
+  try { await startJobCard(props.jobCard); await load() } catch (err) { actionError.value = err.message }
   busy.value = false
 }
 async function complete() {
   busy.value = true
   actionError.value = ''
   try {
-    await api.completeJobCard(props.jobCard, completedQty.value, 1)
+    await completeJobCard(props.jobCard, completedQty.value)
     showComplete.value = false
     await load()
   } catch (err) {
@@ -140,10 +167,14 @@ async function complete() {
   }
   busy.value = false
 }
-onMounted(load)
+const onSynced = (e) => { if (e.detail?.group === 'jc:' + props.jobCard) load() }
+onMounted(() => { load(); window.addEventListener('prod:queue-synced', onSynced) })
+onUnmounted(() => window.removeEventListener('prod:queue-synced', onSynced))
 </script>
 
 <style scoped>
+.iss--draft { opacity: 0.7; }
+.stk { padding: 2px 8px; margin-left: 6px; }
 .row-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .sub { font-size: 12px; color: var(--slate-500); margin-top: 3px; overflow-wrap: anywhere; }
 .nums { display: flex; flex-wrap: wrap; gap: 12px; font-size: 13px; margin-top: 8px; }

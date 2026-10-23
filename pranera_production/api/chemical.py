@@ -62,7 +62,9 @@ def _batch_stock(item_code, warehouse):
 
 @frappe.whitelist()
 def get_chemical_job_cards(txt=None):
-    """Open Job Cards that have a Dye Chart — the chemical store's queue."""
+    """Open Job Cards — the chemical store's queue. Those with a Dye Chart come
+    first; the rest are listed too (dye_chart empty) so the store can see why
+    one can't be issued yet."""
     cond = ""
     params = {}
     if txt:
@@ -80,8 +82,7 @@ def get_chemical_job_cards(txt=None):
             where jc.docstatus < 2 and jc.status not in ('Completed', 'Cancelled')
               {cond}
         ) t
-        where t.dye_chart is not null
-        order by t.modified desc
+        order by (t.dye_chart is null), t.modified desc
         limit 100
         """,
         params, as_dict=True,
@@ -102,7 +103,7 @@ def get_chemical_issue_context(job_card, source_warehouse=None):
     dye_chart = _dye_chart_for(job_card, jc.custom_dye_chart)
     wo = frappe.db.get_value("Work Order", jc.work_order,
                              ["wip_warehouse", "project", "qty", "production_item"], as_dict=True)
-    source_warehouse = source_warehouse or settings().chemical_store_warehouse
+    source_warehouse = source_warehouse or default_chemical_store(job_card)
     items = []
     lot_weight = None
     if dye_chart:
@@ -191,13 +192,12 @@ def issue_chemicals(job_card, source_warehouse, items, posting_date=None, submit
             frappe.throw(_("{0}: issuing {1} is more than the pending {2} — ask a Production "
                            "Supervisor to issue extra").format(code, qty, pending[code]))
         uom = frappe.db.get_value("Item", code, "stock_uom")
-        remaining = qty
-        for batch_no, avail in _batch_stock(code, source_warehouse):
-            if remaining <= 0:
-                break
-            take = floor3(min(avail, remaining))
-            if take <= 0:
-                continue
+        # Batches: the user's choice if sent (validated), else oldest first.
+        from pranera_production.api.dye import check_allocations
+        alloc = check_allocations(code, source_warehouse, qty, it.get("allocations"))
+        remaining = 0
+        for a in alloc:
+            batch_no, take = a["batch_no"], a["qty"]
             row = {
                 "s_warehouse": source_warehouse, "t_warehouse": ctx["wip_warehouse"],
                 "item_code": code, "qty": take, "transfer_qty": take,
@@ -207,7 +207,6 @@ def issue_chemicals(job_card, source_warehouse, items, posting_date=None, submit
             if batch_no:
                 row.update({"batch_no": batch_no, "use_serial_batch_fields": 1})
             se.append("items", row)
-            remaining = flt(remaining - take, 3)
         if remaining > 0.0005:
             frappe.throw(_("Not enough stock of {0} in {1}: short by {2}").format(code, source_warehouse, remaining))
 
@@ -217,3 +216,48 @@ def issue_chemicals(job_card, source_warehouse, items, posting_date=None, submit
         se.submit()
     frappe.db.commit()
     return {"stock_entry": se.name, "submitted": bool(cint(submit_stock_entry))}
+
+
+def unit_chemical_store(warehouse):
+    """The Chemical Store of the unit `warehouse` (a WIP warehouse) belongs to,
+    from Production App Settings > Chemical Store by Unit. The closest unit
+    wins when groups are nested."""
+    if not warehouse:
+        return None
+    w = frappe.db.get_value("Warehouse", warehouse, ["lft", "rgt"], as_dict=True)
+    if not w:
+        return None
+    best = None
+    for row in settings().get("chemical_stores") or []:
+        u = frappe.db.get_value("Warehouse", row.unit_warehouse, ["lft", "rgt"], as_dict=True)
+        if u and u.lft <= w.lft and w.rgt <= u.rgt and (not best or u.rgt - u.lft < best[0]):
+            best = (u.rgt - u.lft, row.chemical_store)
+    return best[1] if best else None
+
+
+def default_chemical_store(job_card=None):
+    """Which store a Job Card's chemicals come from:
+    1. its unit's store (Chemical Store by Unit, matched on the WIP warehouse),
+    2. the Default Chemical Store Warehouse,
+    3. the store this Job Card's (else any) last Chemical Issue came from."""
+    if job_card:
+        wip = frappe.db.sql("""select coalesce(nullif(wo.wip_warehouse, ''), jc.wip_warehouse)
+            from `tabJob Card` jc left join `tabWork Order` wo on wo.name = jc.work_order
+            where jc.name = %s""", job_card)
+        store = unit_chemical_store(wip[0][0] if wip else None)
+        if store:
+            return store
+    store = settings().get("chemical_store_warehouse")
+    if store:
+        return store
+    for filters in ([{"custom_job_card": job_card}] if job_card else []) + [{}]:
+        last = frappe.db.sql(
+            """select d.s_warehouse from `tabStock Entry` se
+               join `tabStock Entry Detail` d on d.parent = se.name
+               where se.custom_production_entry_type = %(t)s and se.docstatus = 1
+                 and d.s_warehouse is not null {jc}
+               order by se.creation desc limit 1""".format(jc="and se.custom_job_card = %(jc)s" if filters else ""),
+            {"t": ENTRY_CHEMICAL, "jc": job_card})
+        if last:
+            return last[0][0]
+    return None

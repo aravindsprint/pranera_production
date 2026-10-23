@@ -34,6 +34,18 @@ values so knitting reports don't change. The live state is in the new fields:
 process history (`roll_tracking.recompute_current`). Cancelling a Stock Entry or a Job Card
 just removes the rows that document added and recomputes.
 
+## Dye Chart and chemical additions
+
+* **Dye Chart** (`/production-app/dye-chart/<job card>`, from Job Cards → "Create Dye Chart"): pick a
+  Dye Receipe, lot weight = Job Card qty + add-on qty, edit the lines, Save / Submit. Uses the existing
+  textiles_and_garments Dye Chart, and writes its lines into the Job Card's items (like "Update JobCard").
+* **Additions**: once the Job Card is started, "Add chemical" issues the qty at once (its own MTM
+  against the Job Card, FIFO batch suggested, changeable) and records it on the Dye Chart's
+  *Chemical Additions* table. Repeat as often as needed, then **End Job Card**. Cancelling an
+  addition's Stock Entry removes its row. The MF consumes additions with the other chemicals in WIP.
+* **Chemical Issue** lists every open Job Card (those without a Dye Chart greyed out) and lets the
+  store change the FIFO batches too.
+
 ## Reports and go-live tools
 
 * **Lot Inspection Report** (`/production-app/lot-report`): port of the Ionic pivot

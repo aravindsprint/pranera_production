@@ -51,6 +51,11 @@
         </button>
       </form>
 
+      <div v-if="isDev" class="login-backend">
+        <div class="login-backend__label">Backend</div>
+        <BackendSwitch compact />
+      </div>
+
       <div class="offline-note" v-if="!isOnline">
         📵 Offline — login requires network
       </div>
@@ -63,6 +68,8 @@ import { ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { isOnline } from '@/composables/useSync'
+import { isDev } from '@/config/backend'
+import BackendSwitch from '@/components/BackendSwitch.vue'
 
 const route = useRoute()
 const auth = useAuthStore()
@@ -101,6 +108,8 @@ async function handleLogin() {
 </script>
 
 <style scoped>
+.login-backend { margin-top: 20px; padding-top: 16px; border-top: 1px solid #f1f5f9; }
+.login-backend__label { font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 8px; }
 .login-page {
   min-height: 100vh;
   display: flex;

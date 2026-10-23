@@ -242,7 +242,8 @@ def get_mistakes(inspection_type="Fabric"):
     return frappe.get_all(
         "Inspection Mistake",
         filters={"disabled": 0, "applies_to": ["in", ["Both", inspection_type]]},
-        fields=["name", "one_point", "two_point", "four_point", "force_grade_3"],
+        fields=["name", "one_point", "two_point", "four_point", "force_grade_3", "sequence",
+                "show_on_board", "board", "column_no", "tile_point", "tile_color", "tile_height"],
         order_by="sequence asc, name asc",
     )
 

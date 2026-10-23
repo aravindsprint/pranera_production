@@ -5,8 +5,16 @@
       <div v-if="!isOnline" class="status-banner status-banner--offline">
         <span class="status-banner__icon">⚡</span>
         <span>Offline — changes will sync when reconnected</span>
-        <span v-if="pendingCount > 0" class="status-banner__pill">{{ pendingCount }} pending</span>
+        <router-link v-if="pendingCount > 0" :to="BASE + '/sync-queue'" class="status-banner__pill">{{ pendingCount }} pending</router-link>
       </div>
+    </transition>
+
+    <!-- Queued actions the server refused -->
+    <transition name="banner">
+      <router-link v-if="failedCount > 0 && route.path !== BASE + '/sync-queue'" :to="BASE + '/sync-queue'"
+                   class="status-banner status-banner--failed">
+        <span>⚠ {{ failedCount }} offline action{{ failedCount > 1 ? 's' : '' }} need attention — tap to review</span>
+      </router-link>
     </transition>
 
     <!-- Sync banner -->
@@ -24,7 +32,9 @@
 <script setup>
 import { onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { useSync, isOnline, isSyncing, pendingCount } from '@/composables/useSync'
+import { useSync, isOnline, isSyncing, pendingCount, failedCount } from '@/composables/useSync'
+import { useRoute } from 'vue-router'
+import { BASE } from '@/utils'
 import { initCSRF, isLoggedIn } from '@/api/frappe'
 useSync()
 
@@ -42,6 +52,7 @@ function applyTheme(t) {
 }
 
 const auth = useAuthStore()
+const route = useRoute()
 onMounted(async () => {
   await initCSRF()
   auth.refreshSession()
@@ -122,6 +133,7 @@ input, select, textarea { font-family: inherit; }
 }
 .status-banner--offline { background: var(--red-600); color: #fff; }
 .status-banner--sync    { background: var(--green-700); color: #fff; }
+.status-banner--failed  { background: #b91c1c; color: #fff; text-decoration: none; }
 .status-banner__pill {
   background: rgba(255,255,255,0.25);
   border-radius: 20px;

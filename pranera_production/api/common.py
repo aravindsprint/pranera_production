@@ -128,7 +128,13 @@ def get_row_batch(row):
     Bundle."""
     if row.get("batch_no"):
         return row.get("batch_no")
-    bundle = row.get("serial_and_batch_bundle")
+    # ERPNext creates the bundle of an auto-batched finished item during
+    # submit, sometimes only in the database — not on the in-memory row.
+    bundle = row.get("serial_and_batch_bundle") or (row.name and frappe.db.get_value(
+        "Stock Entry Detail", row.name, "serial_and_batch_bundle"))
+    if not bundle and row.name:
+        bundle = frappe.db.get_value("Serial and Batch Bundle",
+                                     {"voucher_detail_no": row.name, "is_cancelled": 0}, "name")
     if bundle:
         b = frappe.db.get_value("Serial and Batch Entry", {"parent": bundle}, "batch_no")
         if b:
@@ -230,3 +236,23 @@ def get_csrf_token():
     if frappe.session.user == "Guest":
         return None
     return frappe.sessions.get_csrf_token()
+
+
+@frappe.whitelist()
+def get_app_info():
+    """Settings page: which site this is, the app version, the user's roles,
+    and any field / doctype the app needs that this site is missing."""
+    import pranera_production
+    from pranera_production.schema import schema_report
+
+    roles = set(frappe.get_roles())
+    return {
+        "site": frappe.local.site,
+        "app_version": getattr(pranera_production, "__version__", ""),
+        "installed": "pranera_production" in frappe.get_installed_apps(),
+        "is_system_manager": "System Manager" in roles,
+        "user": frappe.session.user,
+        "app_roles": sorted(roles & APP_ROLES),
+        "settings_ok": bool(frappe.db.get_singles_dict("Production App Settings")),
+        "schema": schema_report(),
+    }

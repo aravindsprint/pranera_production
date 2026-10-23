@@ -151,7 +151,9 @@ async function load() {
   try {
     ctx.value = await api.inspectionContext(props.jobCard)
     localStorage.setItem(CACHE(), JSON.stringify(ctx.value))
-    await db.mistakes.put({ key: ctx.value.inspection_type, inspection_type: ctx.value.inspection_type, rows: ctx.value.mistakes })
+    // plain copy — IndexedDB can't clone Vue's reactive proxies
+    db.mistakes.put({ key: ctx.value.inspection_type, inspection_type: ctx.value.inspection_type,
+                      rows: JSON.parse(JSON.stringify(ctx.value.mistakes || [])) }).catch(() => {})
     offline.value = false
   } catch (err) {
     if (!ctx.value) error.value = err.message
